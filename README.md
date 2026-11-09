@@ -24,7 +24,7 @@ Tested on two real libraries of 480 and 680 titles (5,400 watched marks in total
 ## Before you start
 
 - **Nuvio installed, with the target profile already created** (one profile per person).
-- **Your Stremio account**: e-mail and password, or a Google / Facebook account (see [Signing in to Stremio](#signing-in-to-stremio)).
+- **Your Stremio account**: e-mail and password, or a Facebook / Apple account (see [Signing in to Stremio](#signing-in-to-stremio)).
 - **Your Nuvio e-mail and password.**
 - **Python 3.8 or newer** (see below).
 
@@ -117,7 +117,7 @@ python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna
 | Method | For | How |
 |---|---|---|
 | **1. E-mail and password** | accounts with a Stremio password | type them in the terminal (the password stays hidden) |
-| **2. Link on link.stremio.com** | **Google, Facebook** or any account | the tool shows a link: open it in a browser signed in to Stremio. The page shows "Remote login to new device succeeded" and the export starts. No password is typed. **The account signed in to that browser is the one exported.** |
+| **2. Link (stremio.com)** | **Facebook, Apple** or any account | the tool shows a link that opens **stremio.com**, Stremio's website (its sign-in is separate from web.stremio.com). If that browser is already signed in on stremio.com, the page approves at once ("Remote login to new device succeeded") **with that account**. To choose the account, open the link in a private window and sign in. No password is typed in the terminal. |
 | **3. Auth key** (advanced) | fallback | on [web.stremio.com](https://web.stremio.com), signed in, open the browser console (F12) and run `JSON.parse(localStorage.getItem("profile")).auth.key`, then paste the result |
 
 ## Safety
@@ -150,7 +150,7 @@ python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna
 | SSL certificate error (macOS) | run "Install Certificates.command" in Applications › Python 3.x |
 | "Profile not found" | use the exact profile name shown in the list (case doesn't matter) |
 | The link was not opened in time | run `export` again and open the new link within 5 minutes |
-| The wrong library was exported (method 2) | sign in to the right Stremio account in the browser first, then run `export` again |
+| The wrong library was exported (method 2) | the browser was signed in on stremio.com with another account: open the link in a private window and sign in with the right one |
 | Nuvio sign-in refused | use the e-mail and password of your Nuvio account |
 
 ## How it works

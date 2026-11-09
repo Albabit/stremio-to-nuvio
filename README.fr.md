@@ -24,7 +24,7 @@ Testé sur deux vraies bibliothèques de 480 et 680 titres (5 400 coches « vu �
 ## Avant de commencer
 
 - **Nuvio installé, avec le profil cible déjà créé** (un profil par personne).
-- **Votre compte Stremio** : e-mail et mot de passe, ou compte Google / Facebook (voir [Se connecter à Stremio](#se-connecter-à-stremio)).
+- **Votre compte Stremio** : e-mail et mot de passe, ou compte Facebook / Apple (voir [Se connecter à Stremio](#se-connecter-à-stremio)).
 - **L'e-mail et le mot de passe de votre compte Nuvio.**
 - **Python 3.8 ou plus récent** (voir ci-dessous).
 
@@ -117,7 +117,7 @@ python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna
 | Méthode | Pour | Comment |
 |---|---|---|
 | **1. E-mail et mot de passe** | comptes avec un mot de passe Stremio | saisis dans le terminal (le mot de passe reste invisible) |
-| **2. Lien sur link.stremio.com** | **Google, Facebook** ou tout autre compte | l'outil affiche un lien : ouvrez-le dans un navigateur connecté à Stremio. La page affiche « Remote login to new device succeeded » et l'export démarre. Aucun mot de passe à saisir. **C'est le compte connecté dans ce navigateur qui est exporté.** |
+| **2. Lien (stremio.com)** | **Facebook, Apple** ou tout autre compte | l'outil affiche un lien qui ouvre **stremio.com**, le site de Stremio (sa connexion est distincte de celle de web.stremio.com). Si ce navigateur est déjà connecté à stremio.com, la page approuve tout de suite (« Remote login to new device succeeded ») **avec ce compte**. Pour choisir le compte, ouvrez le lien dans une fenêtre de navigation privée et connectez-vous. Aucun mot de passe à saisir dans le terminal. |
 | **3. Clé de session** (avancé) | solution de secours | sur [web.stremio.com](https://web.stremio.com), connecté, ouvrez la console du navigateur (F12), lancez `JSON.parse(localStorage.getItem("profile")).auth.key`, puis collez le résultat |
 
 ## Sécurité
@@ -150,7 +150,7 @@ python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna
 | Erreur de certificat SSL (macOS) | lancez « Install Certificates.command » dans Applications › Python 3.x |
 | « Profil introuvable » | utilisez le nom exact affiché dans la liste (majuscules indifférentes) |
 | Le lien n'a pas été ouvert à temps | relancez `export` et ouvrez le nouveau lien dans les 5 minutes |
-| Ce n'est pas la bonne bibliothèque (méthode 2) | connectez d'abord le navigateur au bon compte Stremio, puis relancez `export` |
+| Ce n'est pas la bonne bibliothèque (méthode 2) | le navigateur était connecté à stremio.com avec un autre compte : ouvrez le lien dans une fenêtre de navigation privée et connectez-vous avec le bon |
 | Connexion Nuvio refusée | utilisez l'e-mail et le mot de passe de votre compte Nuvio |
 
 ## Fonctionnement

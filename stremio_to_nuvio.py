@@ -28,7 +28,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 USER_AGENT = f"stremio-to-nuvio/{__version__}"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -46,16 +46,16 @@ BATCH = {"library": 200, "watched": 500, "progress": 100}
 
 MESSAGES = {
     "export_title": ("Stremio library export (read-only)", "Export de la bibliothèque Stremio (lecture seule)"),
-    "login_menu": ("How do you sign in to Stremio?\n  1. E-mail and password\n  2. Google, Facebook or any account: approve a code on link.stremio.com\n  3. Paste an auth key (advanced)",
-                   "Comment vous connectez-vous à Stremio ?\n  1. E-mail et mot de passe\n  2. Google, Facebook ou tout autre compte : approuver un code sur link.stremio.com\n  3. Coller une clé de session (avancé)"),
+    "login_menu": ("How do you sign in to Stremio?\n  1. E-mail and password\n  2. Facebook, Apple or any account: open a link (stremio.com)\n  3. Paste an auth key (advanced)",
+                   "Comment vous connectez-vous à Stremio ?\n  1. E-mail et mot de passe\n  2. Facebook, Apple ou tout autre compte : ouvrir un lien (stremio.com)\n  3. Coller une clé de session (avancé)"),
     "login_choice": ("Your choice [1]: ", "Votre choix [1] : "),
     "email": ("Stremio e-mail: ", "E-mail Stremio : "),
     "password": ("Stremio password (hidden): ", "Mot de passe Stremio (invisible) : "),
     "login_refused": ("Sign-in refused: check the e-mail and password.", "Connexion refusée : vérifiez l'e-mail et le mot de passe."),
-    "link_open": ("Open this link in a browser where you are signed in to Stremio with the account to export\n(the page then shows \"Remote login to new device succeeded\"):\n  {link}\n  (or type the code {code} on link.stremio.com)\nWaiting (up to {minutes} min)...",
-                  "Ouvrez ce lien dans un navigateur connecté à Stremio avec le compte à exporter\n(la page affiche alors « Remote login to new device succeeded ») :\n  {link}\n  (ou saisissez le code {code} sur link.stremio.com)\nEn attente (jusqu'à {minutes} min)..."),
+    "link_open": ("Open this link in a browser:\n  {link}\n  (or type the code {code} on link.stremio.com)\nIt opens stremio.com (Stremio's website, not web.stremio.com). If that browser is already signed in\non stremio.com, the page approves at once (\"Remote login to new device succeeded\") with THAT account.\nTo choose the account, open the link in a private window and sign in.\nWaiting (up to {minutes} min)...",
+                  "Ouvrez ce lien dans un navigateur :\n  {link}\n  (ou saisissez le code {code} sur link.stremio.com)\nIl ouvre stremio.com (le site de Stremio, pas web.stremio.com). Si ce navigateur est déjà connecté\nà stremio.com, la page approuve tout de suite (« Remote login to new device succeeded ») avec CE compte.\nPour choisir le compte, ouvrez le lien dans une fenêtre de navigation privée et connectez-vous.\nEn attente (jusqu'à {minutes} min)..."),
     "link_timeout": ("The link was not opened in time. Run the command again.", "Le lien n'a pas été ouvert à temps. Relancez la commande."),
-    "link_ok": ("Approved. Exporting the account signed in to that browser.", "Approuvé. Export du compte connecté dans ce navigateur."),
+    "link_ok": ("Approved. Exporting the account that approved the link.", "Approuvé. Export du compte qui a approuvé le lien."),
     "authkey_help": ("On web.stremio.com, signed in, open the browser console (F12) and run:\n  JSON.parse(localStorage.getItem(\"profile\")).auth.key\nthen paste the result here.",
                      "Sur web.stremio.com, connecté, ouvrez la console du navigateur (F12) et lancez :\n  JSON.parse(localStorage.getItem(\"profile\")).auth.key\npuis collez le résultat ici."),
     "authkey": ("Auth key (hidden): ", "Clé de session (invisible) : "),
@@ -573,7 +573,7 @@ def main():
     p = sub.add_parser("export", help="1. read your Stremio library into a local file (read-only)")
     p.add_argument("--out", default="stremio-library.json", help="output file (default: stremio-library.json)")
     p.add_argument("--login", choices=("password", "link", "authkey"),
-                   help="password, link (Google/Facebook/any: approve a code on link.stremio.com) or authkey")
+                   help="password, link (Facebook/Apple/any account: open a link on stremio.com) or authkey")
     p.add_argument("--link-timeout", type=int, default=300, help="seconds to wait for the code approval (default 300)")
     p.set_defaults(func=cmd_export)
 
