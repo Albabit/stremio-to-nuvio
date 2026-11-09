@@ -1,0 +1,14 @@
+# Personal data produced by the tool: never commit it
+stremio-library*.json
+out/
+out-*/
+.meta-cache/
+*.sources.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
