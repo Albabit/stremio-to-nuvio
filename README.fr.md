@@ -112,6 +112,21 @@ python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna --dry-run
 python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna
 ```
 
+### Importé avec la version 1.0.0 ou 1.0.1 ?
+
+Avec Python 3.10 ou plus ancien, ces versions lisaient mal certaines dates de Stremio : une partie des titres, coches
+« vu » et reprises ont été envoyés datés du **1ᵉʳ janvier 1970** (les coches elles-mêmes sont bonnes, mais le tri par
+date et l'historique sont faussés). La version 1.0.2 corrige cela. Pour réparer un profil déjà importé, lancez ceci avec
+le même fichier d'export :
+
+```
+python3 stremio_to_nuvio.py fix-dates stremio-library.json --profile "Votre profil" --dry-run
+python3 stremio_to_nuvio.py fix-dates stremio-library.json --profile "Votre profil"
+```
+
+Seules les dates mal envoyées par l'outil sont modifiées : ce que vous avez changé dans Nuvio depuis n'est pas touché.
+Avec Python 3.11 ou plus récent, il n'y a rien à réparer (l'outil le dit).
+
 ## Se connecter à Stremio
 
 `export` demande la méthode à utiliser (ou passez `--login password|link|authkey`) :

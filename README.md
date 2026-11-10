@@ -112,6 +112,20 @@ python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna --dry-run
 python3 stremio_to_nuvio.py push --profile "Anna" --dir out-anna
 ```
 
+### Imported with version 1.0.0 or 1.0.1?
+
+With Python 3.10 or older, those versions misread some Stremio dates: part of the titles, watched marks and positions
+were sent dated **1 January 1970** (the marks themselves are fine, but sorting by date and the history are off).
+Version 1.0.2 fixes it. To repair a profile you already imported, run this with the same export file:
+
+```
+python3 stremio_to_nuvio.py fix-dates stremio-library.json --profile "Your profile" --dry-run
+python3 stremio_to_nuvio.py fix-dates stremio-library.json --profile "Your profile"
+```
+
+It only changes the dates the tool itself sent wrong: anything you changed in Nuvio since is left alone.
+With Python 3.11 or newer, there is nothing to repair (the tool says so).
+
 ## Signing in to Stremio
 
 `export` asks which method to use (or pass `--login password|link|authkey`):

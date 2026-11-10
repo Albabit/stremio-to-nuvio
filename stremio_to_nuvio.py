@@ -8,6 +8,11 @@ Three steps, one file, Python 3.8+ standard library only (Windows, macOS, Linux)
     python3 stremio_to_nuvio.py push --profile "Name" --dry-run
     python3 stremio_to_nuvio.py push --profile "Name"      # send to that Nuvio profile (additive only)
 
+Imported with 1.0.0 or 1.0.1 on Python 3.10 or older? Some dates were sent as 1970; repair them with:
+
+    python3 stremio_to_nuvio.py fix-dates --profile "Name" --dry-run
+    python3 stremio_to_nuvio.py fix-dates --profile "Name"
+
 What is copied: saved titles (Nuvio library "Saved"), watched movies and episodes, and
 playback positions (Continue Watching). Nothing is ever deleted, in Stremio or in Nuvio.
 
@@ -20,6 +25,7 @@ import getpass
 import json
 import locale
 import os
+import re
 import ssl
 import sys
 import time
@@ -28,7 +34,7 @@ import urllib.parse
 import urllib.request
 import zlib
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 USER_AGENT = f"stremio-to-nuvio/{__version__}"
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -79,6 +85,12 @@ MESSAGES = {
     "sent": ("  {kind}: {n}/{n} sent      ", "  {kind} : {n}/{n} envoyés      "),
     "push_done": ("\nNow in \"{name}\": {l} saved titles, {w} watched, {p} positions\nClose and reopen Nuvio on this profile to see the changes.",
                   "\nMaintenant dans « {name} » : {l} titres enregistrés, {w} « vu », {p} reprises\nFermez puis rouvrez Nuvio sur ce profil pour voir les changements."),
+    "fix_nothing": ("\nNothing to fix in \"{name}\": no date sent wrong by versions 1.0.0 or 1.0.1 was found.",
+                    "\nRien à corriger dans « {name} » : aucune date mal envoyée par les versions 1.0.0 ou 1.0.1."),
+    "fix_plan": ("\nTarget profile: {name} (#{index})\n  dates to fix: {l} saved titles, {w} watched, {p} positions\n  (only the dates sent wrong by versions 1.0.0/1.0.1: nothing else changes, nothing is deleted)",
+                 "\nProfil cible : {name} (n° {index})\n  dates à corriger : {l} titres enregistrés, {w} « vu », {p} reprises\n  (seulement les dates mal envoyées par les versions 1.0.0/1.0.1 : rien d'autre ne change, rien n'est supprimé)"),
+    "fix_done": ("\nDone. Dates still to fix in \"{name}\": {n} (0 expected; otherwise run the command again).\nClose and reopen Nuvio on this profile to see the changes.",
+                 "\nTerminé. Dates encore à corriger dans « {name} » : {n} (0 attendu ; sinon relancez la commande).\nFermez puis rouvrez Nuvio sur ce profil pour voir les changements."),
     "http_error": ("{service} answered {code}: {detail}", "{service} a répondu {code} : {detail}"),
     "net_error": ("Cannot reach {service} ({reason}).", "Impossible de joindre {service} ({reason})."),
     "ssl_hint": ("SSL certificate error. On macOS with the python.org installer, run \"Install Certificates.command\" (in Applications > Python 3.x), then try again.",
@@ -155,10 +167,33 @@ def ms(value, fallback=0):
         return fallback
     if isinstance(value, (int, float)):
         return int(value)
+    # Stremio dates can carry up to 9 decimals (nanoseconds). Before Python 3.11, fromisoformat()
+    # only reads exactly 3 or 6, so normalize to 6.
+    text = re.sub(r"\.(\d+)", lambda m: "." + m.group(1)[:6].ljust(6, "0"), value.strip().replace("Z", "+00:00"), count=1)
     try:
-        return int(dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp() * 1000)
+        parsed = dt.datetime.fromisoformat(text)
     except ValueError:
         return fallback
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+    return int(parsed.timestamp() * 1000)
+
+
+def ms_v101(value, fallback=0):
+    """How versions 1.0.0 and 1.0.1 read a date on Python < 3.11: fractions other than 0, 3 or 6 digits
+    failed and fell back. Used only by fix-dates, to find the values those versions sent."""
+    if isinstance(value, str):
+        frac = re.search(r"\.(\d+)", value)
+        if frac and len(frac.group(1)) not in (3, 6):
+            return fallback
+    return ms(value, fallback)
+
+
+def item_dates(it, read=ms):
+    """(last watched, added) in ms for a Stremio library item."""
+    st = it.get("state") or {}
+    last = read(st.get("lastWatched"), read(it.get("_mtime")))
+    return last, read(it.get("_ctime"), last)
 
 
 def write_private_json(path, data):
@@ -359,7 +394,7 @@ def cmd_build(args):
             if visible or st.get("watched") or (st.get("timesWatched") or 0) > 0:
                 skipped.append((name, cid, ctype))
             continue
-        last = ms(st.get("lastWatched"), ms(it.get("_mtime")))
+        last, added = item_dates(it)
 
         if visible:
             shape = (it.get("posterShape") or "poster").upper()
@@ -368,7 +403,7 @@ def cmd_build(args):
                 "poster_shape": shape if shape in ("POSTER", "LANDSCAPE", "SQUARE") else "POSTER",
                 "background": it.get("background") or None, "logo": it.get("logo") or None,
                 "release_info": str(it.get("year")) if it.get("year") else None,
-                "added_at": ms(it.get("_ctime"), last),
+                "added_at": added,
             })
 
         if ctype == "movie" and ((st.get("timesWatched") or 0) > 0 or (st.get("flaggedWatched") or 0) > 0):
@@ -443,6 +478,7 @@ class Nuvio:
         if not self.base or not self.key:
             die(t("net_error", service="Nuvio", reason="invalid discovery document"))
         self.token = None
+        self.profile = None
 
     def headers(self):
         h = {"apikey": self.key}
@@ -468,23 +504,45 @@ class Nuvio:
     def rpc(self, name, params):
         return http("POST", f"{self.base}/rest/v1/rpc/{name}", params, self.headers(), service="Nuvio")
 
+    def rows(self, profile):
+        """Every row of the profile, one dict per key (the server returns at most 1000 rows per request)."""
+        found = {"library": {}, "watched": {}, "progress": {}}
+        for kind, fn, paging in (("library", "sync_pull_library", "offset"), ("watched", "sync_pull_watched_items", "page")):
+            n = 0
+            while True:
+                params = ({"p_limit": 1000, "p_offset": n * 1000} if paging == "offset" else {"p_page": n + 1, "p_page_size": 1000})
+                page = self.rpc(fn, {"p_profile_id": profile, **params}) or []
+                found[kind].update((key_of(kind, r), r) for r in page)
+                if len(page) < 1000:
+                    break
+                n += 1
+        found["progress"] = {r["progress_key"]: r for r in self.rpc("sync_pull_watch_progress", {"p_profile_id": profile}) or []}
+        return {kind: list(rows.values()) for kind, rows in found.items()}
+
     def existing(self, profile):
-        library, offset = set(), 0
-        while True:
-            rows = self.rpc("sync_pull_library", {"p_profile_id": profile, "p_limit": 500, "p_offset": offset}) or []
-            library |= {(r["content_id"], r["content_type"]) for r in rows}
-            if len(rows) < 500:
-                break
-            offset += 500
-        watched, page = set(), 1
-        while True:  # the server returns at most 1000 rows per request
-            rows = self.rpc("sync_pull_watched_items", {"p_profile_id": profile, "p_page": page, "p_page_size": 1000}) or []
-            watched |= {(r["content_id"], r.get("season"), r.get("episode")) for r in rows}
-            if len(rows) < 1000:
-                break
-            page += 1
-        progress = {r["progress_key"] for r in self.rpc("sync_pull_watch_progress", {"p_profile_id": profile}) or []}
-        return {"library": library, "watched": watched, "progress": progress}
+        return {kind: {key_of(kind, r) for r in rows} for kind, rows in self.rows(profile).items()}
+
+    def send(self, kind, items):
+        """Additive server functions only. sync_push_library (which REPLACES the whole library) is never used."""
+        fn, param = PUSH[kind]
+        size = BATCH[kind]
+        for start in range(0, len(items), size):
+            self.rpc(fn, {param: items[start:start + size], "p_profile_id": self.profile})
+            print(f"  {kind}: {min(start + size, len(items))}/{len(items)}", end="\r", flush=True)
+            time.sleep(0.3)
+        print(t("sent", kind=kind, n=len(items)))
+
+
+PUSH = {"library": ("sync_push_library_items", "p_items"),
+        "watched": ("sync_push_watched_items", "p_items"),
+        "progress": ("sync_push_watch_progress", "p_entries")}
+# Fields each push function reads (fix-dates sends server rows back with these fields only).
+FIELDS = {"library": ("content_id", "content_type", "name", "poster", "poster_shape", "background", "logo", "description",
+                      "release_info", "imdb_rating", "genres", "addon_base_url", "added_at"),
+          "watched": ("content_id", "content_type", "title", "season", "episode", "watched_at"),
+          "progress": ("content_id", "content_type", "video_id", "season", "episode", "position", "duration",
+                       "last_watched", "progress_key")}
+DATE_FIELD = {"library": "added_at", "watched": "watched_at", "progress": "last_watched"}
 
 
 def key_of(kind, item):
@@ -492,6 +550,8 @@ def key_of(kind, item):
         return (item["content_id"], item["content_type"])
     if kind == "watched":
         return (item["content_id"], item.get("season"), item.get("episode"))
+    if item.get("progress_key"):
+        return item["progress_key"]
     if item.get("season") is not None and item.get("episode") is not None:
         return f"{item['content_id']}_s{item['season']}e{item['episode']}"
     return item["content_id"]
@@ -506,24 +566,37 @@ def discovery_url(server):
     return server if server.endswith("/.well-known/nuvio") else server + "/.well-known/nuvio"
 
 
-def cmd_push(args):
-    payloads = {kind: read_json(os.path.join(args.dir, f"nuvio-{kind}.json")) for kind in ("library", "watched", "progress")}
+def sign_in_nuvio(args):
     nuvio = Nuvio(discovery_url(args.server))
     print(t("server", server=nuvio.base) + "\n")
     email = input(t("nuvio_email")).strip()
     password = getpass.getpass(t("nuvio_password"))
     nuvio.sign_in(email, password)
-    password = None
-    try:
-        profiles = nuvio.rpc("sync_pull_profiles", {}) or []
-        print(t("profiles"))
-        for p in profiles:
-            print(f"  {p['profile_index']}. {p['name']}")
-        target = [p for p in profiles if p["name"].strip().casefold() == args.profile.strip().casefold()]
-        if len(target) != 1:
-            die(t("profile_missing", name=args.profile))
-        index, name = target[0]["profile_index"], target[0]["name"]
+    return nuvio
 
+
+def choose_profile(nuvio, wanted):
+    profiles = nuvio.rpc("sync_pull_profiles", {}) or []
+    print(t("profiles"))
+    for p in profiles:
+        print(f"  {p['profile_index']}. {p['name']}")
+    target = [p for p in profiles if p["name"].strip().casefold() == wanted.strip().casefold()]
+    if len(target) != 1:
+        die(t("profile_missing", name=wanted))
+    nuvio.profile = target[0]["profile_index"]
+    return target[0]["profile_index"], target[0]["name"]
+
+
+def confirm(name):
+    if input(t("confirm", name=name)).strip().casefold() != name.strip().casefold():
+        die(t("confirm_bad"))
+
+
+def cmd_push(args):
+    payloads = {kind: read_json(os.path.join(args.dir, f"nuvio-{kind}.json")) for kind in ("library", "watched", "progress")}
+    nuvio = sign_in_nuvio(args)
+    try:
+        index, name = choose_profile(nuvio, args.profile)
         before = nuvio.existing(index)
         todo = {kind: [it for it in items if key_of(kind, it) not in before[kind]] for kind, items in payloads.items()}
         print(t("push_plan", name=name, index=index,
@@ -534,22 +607,63 @@ def cmd_push(args):
         if args.dry_run:
             print(t("dry_run"))
             return
-        if input(t("confirm", name=name)).strip().casefold() != name.strip().casefold():
-            die(t("confirm_bad"))
-
-        # Additive server functions only. sync_push_library (which REPLACES the whole library) is never used.
-        for kind, fn, param in (("library", "sync_push_library_items", "p_items"),
-                                ("watched", "sync_push_watched_items", "p_items"),
-                                ("progress", "sync_push_watch_progress", "p_entries")):
-            items, size = todo[kind], BATCH[kind]
-            for start in range(0, len(items), size):
-                nuvio.rpc(fn, {param: items[start:start + size], "p_profile_id": index})
-                print(f"  {kind}: {min(start + size, len(items))}/{len(items)}", end="\r", flush=True)
-                time.sleep(0.3)
-            print(t("sent", kind=kind, n=len(items)))
+        confirm(name)
+        for kind in ("library", "watched", "progress"):
+            nuvio.send(kind, todo[kind])
 
         after = nuvio.existing(index)
         print(t("push_done", name=name, l=len(after["library"]), w=len(after["watched"]), p=len(after["progress"])))
+    finally:
+        nuvio.sign_out()
+
+
+# --------------------------------------------------------------------------- fix-dates
+
+def plan_date_fixes(items, server_rows):
+    """Rows that versions 1.0.0/1.0.1 sent with a misread date (often 0, shown as 1970).
+
+    A row is fixed only when its date is still EXACTLY the value those versions computed for that
+    Stremio item, and that value differs from the right one. Anything changed in Nuvio since is left alone.
+    """
+    dates = {}
+    for it in items:
+        if it.get("_id"):
+            dates[it["_id"]] = (item_dates(it, ms_v101), item_dates(it))
+    fixes = {}
+    for kind, rows in server_rows.items():
+        field, pick = DATE_FIELD[kind], (1 if kind == "library" else 0)
+        fixes[kind] = []
+        for row in rows:
+            known = dates.get(row.get("content_id"))
+            if not known:
+                continue
+            sent, right = known[0][pick], known[1][pick]
+            if sent != right and row.get(field) == sent:
+                fixed = {k: row.get(k) for k in FIELDS[kind] if k in row}
+                fixed[field] = right
+                fixes[kind].append(fixed)
+    return fixes
+
+
+def cmd_fix_dates(args):
+    items = read_json(args.input)
+    nuvio = sign_in_nuvio(args)
+    try:
+        index, name = choose_profile(nuvio, args.profile)
+        fixes = plan_date_fixes(items, nuvio.rows(index))
+        counts = {kind: len(rows) for kind, rows in fixes.items()}
+        if not any(counts.values()):
+            print(t("fix_nothing", name=name))
+            return
+        print(t("fix_plan", name=name, index=index, l=counts["library"], w=counts["watched"], p=counts["progress"]))
+        if args.dry_run:
+            print(t("dry_run"))
+            return
+        confirm(name)
+        for kind in ("library", "watched", "progress"):
+            nuvio.send(kind, fixes[kind])
+        left = plan_date_fixes(items, nuvio.rows(index))
+        print(t("fix_done", name=name, n=sum(len(rows) for rows in left.values())))
     finally:
         nuvio.sign_out()
 
@@ -590,6 +704,13 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="sign in and count, write nothing")
     p.add_argument("--server", help="self-hosted Nuvio server (domain or discovery URL); default: official Nuvio")
     p.set_defaults(func=cmd_push)
+
+    p = sub.add_parser("fix-dates", help="repair dates sent as 1970 by versions 1.0.0/1.0.1 (Python 3.10 or older)")
+    p.add_argument("input", nargs="?", default="stremio-library.json", help="the export used for that import (default: stremio-library.json)")
+    p.add_argument("--profile", required=True, help="exact name of the Nuvio profile to repair")
+    p.add_argument("--dry-run", action="store_true", help="sign in and count, write nothing")
+    p.add_argument("--server", help="self-hosted Nuvio server (domain or discovery URL); default: official Nuvio")
+    p.set_defaults(func=cmd_fix_dates)
 
     args = parser.parse_args()
     LANG = detect_lang(args.lang)
