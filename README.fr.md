@@ -8,6 +8,8 @@ lecture (« Continuer à regarder »). Un seul fichier Python, sans module à in
 > Outil non officiel, sans lien avec Stremio ni Nuvio. Il ne fait qu'**ajouter** des données au profil Nuvio que vous
 > nommez : rien n'est jamais supprimé, ni dans Stremio, ni dans Nuvio.
 
+**[⬇ Télécharger stremio_to_nuvio.py](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py)** (dernière version) · [Notes de version](https://github.com/Albabit/stremio-to-nuvio/releases/latest)
+
 ## Ce qui est copié
 
 | Depuis Stremio | Vers Nuvio |
@@ -58,7 +60,7 @@ Python 3 est en général déjà installé (`python3 --version`). Sinon : `sudo 
 
 ### Télécharger l'outil et ouvrir un terminal dans son dossier
 
-Téléchargez [`stremio_to_nuvio.py`](stremio_to_nuvio.py) (ou **Code › Download ZIP**), placez-le dans un dossier, puis ouvrez un terminal dans ce dossier :
+Téléchargez [`stremio_to_nuvio.py`](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py) (dernière version), placez-le dans un dossier, puis ouvrez un terminal dans ce dossier :
 
 - **Windows** : ouvrez le dossier dans l'Explorateur, tapez `cmd` dans la barre d'adresse, puis Entrée.
 - **macOS** : ouvrez le Terminal, tapez `cd ` (avec une espace), glissez le dossier dans la fenêtre, puis Entrée.

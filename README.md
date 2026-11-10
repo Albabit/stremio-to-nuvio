@@ -8,6 +8,8 @@ Copy your **Stremio library into a Nuvio profile**: saved titles, watched movies
 > Unofficial tool, not affiliated with Stremio or Nuvio. It only **adds** data to the Nuvio profile you name:
 > nothing is ever deleted, in Stremio or in Nuvio.
 
+**[⬇ Download stremio_to_nuvio.py](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py)** (latest version) · [Release notes](https://github.com/Albabit/stremio-to-nuvio/releases/latest)
+
 ## What gets copied
 
 | From Stremio | To Nuvio |
@@ -58,7 +60,7 @@ Python 3 is usually already installed (`python3 --version`). Otherwise: `sudo ap
 
 ### Download the tool and open a terminal in its folder
 
-Download [`stremio_to_nuvio.py`](stremio_to_nuvio.py) (or **Code › Download ZIP**), put it in a folder, then open a terminal there:
+Download [`stremio_to_nuvio.py`](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py) (latest release), put it in a folder, then open a terminal there:
 
 - **Windows**: open the folder in File Explorer, type `cmd` in the address bar and press Enter.
 - **macOS**: open Terminal, type `cd ` (with a space), drag the folder into the window, press Enter.
