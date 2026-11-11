@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://*.strem.io https://link.stremio.com https://*.nuvio.tv; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Stremio → Nuvio</title>
+<style>
+:root {
+  --bg: #f6f5f9; --card: #ffffff; --ink: #1d1b26; --muted: #5d5a6b; --line: #e3e0ea;
+  --accent: #5b45d6; --accent-ink: #ffffff; --accent-soft: #ece9fb;
+  --ok: #1f7a4d; --ok-soft: #e4f4ec; --warn: #8a5a00; --warn-soft: #fbf1dc; --bad: #b42335; --bad-soft: #fbe7ea;
+  --code: #f0eef6; --shadow: 0 1px 2px rgba(20,16,40,.06), 0 4px 16px rgba(20,16,40,.05);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121118; --card: #1b1a24; --ink: #ecebf3; --muted: #a8a5b8; --line: #2e2c3b;
+    --accent: #8f7cff; --accent-ink: #120f24; --accent-soft: #262145;
+    --ok: #5fd39a; --ok-soft: #15301f; --warn: #f0b85a; --warn-soft: #33270f; --bad: #ff7b8a; --bad-soft: #3a1820;
+    --code: #24222f; --shadow: none;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.wrap { max-width: 760px; margin: 0 auto; padding: 28px 18px 60px; }
+header.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+h1 { font-size: clamp(1.7rem, 4.5vw, 2.2rem); line-height: 1.15; margin: 0 0 6px; letter-spacing: -.02em; }
+h1 .arrow { color: var(--accent); }
+.lede { margin: 0; color: var(--muted); max-width: 52ch; }
+.lang { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--card); }
+.lang button { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .85rem; font-weight: 600; padding: 4px 12px; border-radius: 999px; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.trust { margin: 22px 0 26px; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); display: grid; gap: 6px; font-size: .93rem; }
+.trust p { margin: 0; }
+.trust b { color: var(--ink); }
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; }
+.step { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 18px 20px; box-shadow: var(--shadow); }
+.step[data-state="todo"] { opacity: .55; box-shadow: none; }
+.step[data-state="todo"] .body { display: none; }
+.step-head { display: flex; align-items: center; gap: 12px; }
+.num { flex: none; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .95rem; background: var(--accent-soft); color: var(--accent); }
+.step[data-state="done"] .num { background: var(--ok-soft); color: var(--ok); }
+.step h2 { font-size: 1.15rem; margin: 0; letter-spacing: -.01em; }
+.step .sum { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+.body { margin-top: 14px; display: grid; gap: 14px; }
+.body > p { margin: 0; }
+.choice { display: grid; gap: 10px; }
+.btn { appearance: none; border: 1px solid transparent; border-radius: 12px; font: inherit; font-weight: 600; padding: 11px 18px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; min-height: 44px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.secondary { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.secondary:hover { border-color: var(--accent); }
+.btn[disabled] { opacity: .5; cursor: not-allowed; filter: none; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; justify-self: start; text-align: left; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.hint { font-size: .9rem; color: var(--muted); margin: 0; }
+.codebox { display: grid; gap: 10px; padding: 16px; border-radius: 14px; background: var(--code); }
+.code { font: 700 clamp(1.6rem, 7vw, 2.1rem)/1.1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .14em; }
+.small-code { font: 600 .9rem ui-monospace, "SF Mono", Menlo, Consolas, monospace; word-break: break-all; }
+.wait { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .93rem; }
+.spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin .8s linear infinite; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+form.creds { display: grid; gap: 10px; }
+label.f { display: grid; gap: 4px; font-size: .9rem; font-weight: 600; }
+input[type="email"], input[type="password"] { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); min-height: 44px; width: 100%; }
+input:focus-visible, .btn:focus-visible, .linkish:focus-visible, .lang button:focus-visible, .prof input:focus-visible + span { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.bar { height: 10px; border-radius: 999px; background: var(--code); overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; transition: width .2s; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { padding: 12px 14px; border-radius: 12px; background: var(--code); }
+.stat b { display: block; font-size: 1.45rem; line-height: 1.2; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.stat span { font-size: .85rem; color: var(--muted); }
+details.more { border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+details.more summary { cursor: pointer; font-weight: 600; }
+details.more ul { margin: 10px 0 2px; padding-left: 20px; font-size: .92rem; }
+details.more li { margin: 2px 0; }
+details.more p { margin: 8px 0 0; font-size: .92rem; color: var(--muted); }
+.note { padding: 12px 14px; border-radius: 12px; font-size: .93rem; }
+.note.ok { background: var(--ok-soft); }
+.note.warn { background: var(--warn-soft); }
+.note.bad { background: var(--bad-soft); }
+.note p { margin: 0; }
+.note p + p { margin-top: 6px; }
+.profiles { display: grid; gap: 8px; }
+.prof { display: block; cursor: pointer; }
+.prof input { position: absolute; opacity: 0; pointer-events: none; }
+.prof span { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; font-weight: 600; }
+.prof span::before { content: ""; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex: none; }
+.prof input:checked + span { border-color: var(--accent); background: var(--accent-soft); }
+.prof input:checked + span::before { border-color: var(--accent); background: radial-gradient(var(--accent) 45%, transparent 50%); }
+table.plan { width: 100%; border-collapse: collapse; font-size: .93rem; font-variant-numeric: tabular-nums; }
+table.plan th, table.plan td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); }
+table.plan th:first-child, table.plan td:first-child { text-align: left; }
+table.plan thead th { color: var(--muted); font-weight: 600; font-size: .85rem; }
+table.plan td.send { font-weight: 700; color: var(--accent); }
+.tablewrap { overflow-x: auto; }
+footer.foot { margin-top: 34px; color: var(--muted); font-size: .85rem; display: grid; gap: 4px; }
+footer.foot p { margin: 0; }
+a { color: var(--accent); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Stremio <span class="arrow">→</span> Nuvio</h1>
+      <p class="lede" data-i="lede"></p>
+    </div>
+    <div class="lang" role="group" aria-label="Langue / Language">
+      <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <section class="trust" aria-label="Sécurité">
+    <p data-i="trust1"></p>
+    <p data-i="trust2"></p>
+  </section>
+
+  <ol class="steps">
+    <!-- 1. Stremio -->
+    <li class="step" id="s1" data-state="active">
+      <div class="step-head"><span class="num">1</span><div><h2 data-i="s1_title"></h2><p class="sum" id="s1sum" data-i="s1_sub"></p></div></div>
+      <div class="body" id="s1body"></div>
+    </li>
+    <!-- 2. Préparation -->
+    <li class="step" id="s2" data-state="todo">
+      <div class="step-head"><span class="num">2</span><div><h2 data-i="s2_title"></h2><p class="sum" id="s2sum" data-i="s2_sub"></p></div></div>
+      <div class="body" id="s2body"></div>
+    </li>
+    <!-- 3. Nuvio -->
+    <li class="step" id="s3" data-state="todo">
+      <div class="step-head"><span class="num">3</span><div><h2 data-i="s3_title"></h2><p class="sum" id="s3sum" data-i="s3_sub"></p></div></div>
+      <div class="body" id="s3body"></div>
+    </li>
+    <!-- 4. Envoi -->
+    <li class="step" id="s4" data-state="todo">
+      <div class="step-head"><span class="num">4</span><div><h2 data-i="s4_title"></h2><p class="sum" id="s4sum" data-i="s4_sub"></p></div></div>
+      <div class="body" id="s4body"></div>
+    </li>
+  </ol>
+
+  <div class="sr" aria-live="polite" id="live"></div>
+
+  <footer class="foot">
+    <p data-i="foot1"></p>
+    <p><span data-i="foot2"></span> <a href="https://github.com/Albabit/stremio-to-nuvio" target="_blank" rel="noopener noreferrer">github.com/Albabit/stremio-to-nuvio</a></p>
+  </footer>
+</div>
+
+<script>
+/* CORE START — logique sans interface, identique au script Python stremio_to_nuvio.py (testée hors navigateur). */
+const VERSION = "1.1.0";
+const STREMIO_API = "https://api.strem.io/api/";
+const STREMIO_LINK = "https://link.stremio.com/api/v2/";
+const NUVIO_DISCOVERY = "https://api.nuvio.tv/.well-known/nuvio";
+const NUVIO_LINK_PAGE = "https://nuvio.tv/link";
+const META_SOURCES = [
+  ["Cinemeta", "https://v3-cinemeta.strem.io/meta/{type}/{id}.json"],
+  ["Nuvio Catalog", "https://catalog.nuvio.tv/meta/{type}/{id}.json"],
+];
+const PROGRESS_MIN = 0.02, PROGRESS_MAX = 0.92;
+const BATCH = { library: 200, watched: 500, progress: 100 };
+const PUSH = {
+  library: ["sync_push_library_items", "p_items"],
+  watched: ["sync_push_watched_items", "p_items"],
+  progress: ["sync_push_watch_progress", "p_entries"],
+};
+const CHECK_GAP = 5; // « à vérifier » : Stremio compte au moins 5 épisodes vus de plus que ceux retrouvés
+
+const sleep = (msec) => new Promise((r) => setTimeout(r, msec));
+
+class HttpError extends Error {
+  constructor(service, status, detail) {
+    super(`${service} ${status}: ${detail}`);
+    this.service = service; this.status = status; this.detail = detail;
+  }
+}
+
+/** fetch JSON with the same retries as the Python script (429/5xx and network errors, 4 tries). */
+async function http(method, url, { body, headers = {}, service = "server", tries = 4, allowErrors = false, keepalive = false } = {}) {
+  for (let attempt = 0; attempt < tries; attempt++) {
+    let res;
+    try {
+      const h = { ...headers };
+      if (body !== undefined) h["Content-Type"] = "application/json";
+      res = await fetch(url, { method, headers: h, body: body !== undefined ? JSON.stringify(body) : undefined, keepalive, cache: "no-store", credentials: "omit", referrerPolicy: "no-referrer" });
+    } catch (e) {
+      if (attempt < tries - 1) { await sleep(3000 * (attempt + 1)); continue; }
+      throw new HttpError(service, "network", String(e && e.message || e));
+    }
+    const text = await res.text();
+    if (!res.ok) {
+      if ([429, 500, 502, 503, 504].includes(res.status) && attempt < tries - 1) { await sleep(3000 * (attempt + 1)); continue; }
+      if (allowErrors) return { _httpError: res.status, _detail: text.slice(0, 300) };
+      throw new HttpError(service, res.status, text.slice(0, 300));
+    }
+    if (!text.trim()) return null;
+    try { return JSON.parse(text); } catch { throw new HttpError(service, "json", text.slice(0, 120)); }
+  }
+}
+
+/* ---------- Stremio ---------- */
+async function stremioCall(method, payload) {
+  const r = (await http("POST", STREMIO_API + method, { body: payload, service: "Stremio", allowErrors: true })) || {};
+  if (r._httpError || r.error) return [null, r.error || r._detail];
+  return [r.result, null];
+}
+async function stremioLoginPassword(email, password) {
+  const [result] = await stremioCall("login", { type: "Login", email, password, facebook: false });
+  return result && result.authKey ? result.authKey : null;
+}
+async function stremioLinkCreate() {
+  const created = (await http("GET", STREMIO_LINK + "create?type=Create", { service: "Stremio" })) || {};
+  const res = created.result || created;
+  if (!res.code) throw new HttpError("link.stremio.com", "no code", "");
+  return { code: res.code, link: res.link || ("https://link.stremio.com/" + res.code) };
+}
+async function stremioLinkRead(code) {
+  const body = (await http("GET", STREMIO_LINK + "read?type=Read&code=" + encodeURIComponent(code), { service: "Stremio", allowErrors: true })) || {};
+  const result = body.result;
+  return result && typeof result === "object" && result.authKey ? result.authKey : null;
+}
+async function stremioExport(authKey) {
+  try {
+    const [items, err] = await stremioCall("datastoreGet", { authKey, collection: "libraryItem", ids: [], all: true });
+    if (err != null && items == null) throw new HttpError("Stremio", "datastoreGet", typeof err === "string" ? err : JSON.stringify(err));
+    return items || [];
+  } finally {
+    await stremioCall("logout", { authKey }).catch(() => {}); // ferme seulement la session ouverte ici
+  }
+}
+function exportCounts(items) {
+  const st = (i) => i.state || {};
+  const visible = items.filter((i) => !i.removed && !i.temp);
+  const movies = visible.filter((i) => i.type === "movie").length;
+  const series = visible.filter((i) => i.type === "series").length;
+  const watched = items.filter((i) => (st(i).timesWatched || 0) > 0 || (st(i).flaggedWatched || 0) > 0 || st(i).watched).length;
+  const progress = items.filter((i) => (st(i).timeOffset || 0) > 0 && !i.removed).length;
+  return { total: items.length, visible: visible.length, movies, series, other: visible.length - movies - series, watched, progress };
+}
+
+/* ---------- dates ---------- */
+const ISO = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+function ms(value, fallback = 0) {
+  if (value === null || value === undefined || value === "" || value === 0) return fallback;
+  if (typeof value === "number") return Math.trunc(value);
+  const m = ISO.exec(String(value).trim());
+  if (!m) return fallback;
+  const [, y, mo, d, h = "0", mi = "0", s = "0", frac = "", tz] = m;
+  let t = Date.UTC(+y, +mo - 1, +d, +h, +mi, +s) + Number((frac + "000").slice(0, 3));
+  if (tz && tz !== "Z") {
+    const sign = tz[0] === "-" ? -1 : 1;
+    const digits = tz.slice(1).replace(":", "");
+    t -= sign * (Number(digits.slice(0, 2)) * 60 + Number(digits.slice(2, 4))) * 60000;
+  }
+  return Number.isFinite(t) ? t : fallback;
+}
+function itemDates(it) {
+  const st = it.state || {};
+  const last = ms(st.lastWatched, ms(it._mtime));
+  return [last, ms(it._ctime, last)];
+}
+
+/* ---------- bitfield des épisodes vus ---------- */
+async function inflateZlib(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+function b64ToBytes(b64) {
+  const bin = atob(b64.replace(/\s+/g, ""));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+/** Stremio stores watched episodes as '<anchor video id>:<anchor length>:<base64(zlib(bits))>'. */
+async function decodeBitfield(serialized) {
+  const parts = serialized.split(":");
+  if (parts.length < 3) throw new Error("unexpected format");
+  const anchor = parts.slice(0, -2).join(":");
+  const lenText = parts[parts.length - 2].trim();
+  if (!/^[+-]?\d+$/.test(lenText)) throw new Error("bad anchor length");
+  const anchorLen = parseInt(lenText, 10);
+  const raw = await inflateZlib(b64ToBytes(parts[parts.length - 1]));
+  const bits = new Set();
+  for (let i = 0; i < raw.length * 8; i++) if ((raw[i >> 3] >> (i & 7)) & 1) bits.add(i);
+  return { anchor, anchorLen, bits };
+}
+
+/* ---------- listes d'épisodes ---------- */
+class MetaCache {
+  constructor(sources = META_SOURCES, onFetch = null) { this.sources = sources; this.map = new Map(); this.onFetch = onFetch; this.failed = new Set(); }
+  async videos(source, ctype, cid) {
+    const key = `${source}_${ctype}_${cid}`;
+    if (this.map.has(key)) return this.map.get(key);
+    const tpl = this.sources.find(([n]) => n === source)[1];
+    const url = tpl.replace("{type}", ctype).replace("{id}", encodeURIComponent(cid).replace(/%3A/gi, ":"));
+    let body;
+    try { body = (await http("GET", url, { service: source, allowErrors: true })) || {}; }
+    catch (e) { this.failed.add(cid); return []; } // injoignable : pas mis en cache, « Réessayer » le relira
+    this.failed.delete(cid);
+    const meta = body._httpError ? {} : (body.meta || {});
+    const vids = (meta.videos || []).filter((v) => v && v.id).map((v) => ({
+      id: v.id, season: v.season ?? null, episode: (v.episode || v.number) ?? null,
+    }));
+    this.map.set(key, vids);
+    if (this.onFetch) this.onFetch();
+    return vids;
+  }
+}
+const epKey = (v) => [v.season !== null && v.season !== undefined ? v.season : 0, v.episode || 0];
+function cmpTuple(a, b) {
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i], y = b[i];
+    if (x < y) return -1;
+    if (x > y) return 1;
+  }
+  return 0;
+}
+async function* candidateLists(cache, cid) {
+  for (const [source] of cache.sources) {
+    if (source === "Cinemeta" && !cid.startsWith("tt")) continue;
+    const vids = (await cache.videos(source, "series", cid)) || [];
+    if (vids.length) {
+      yield [source, "source order", vids];
+      yield [source, "season/episode", [...vids].sort((a, b) => cmpTuple(epKey(a), epKey(b)))];
+      yield [source, "specials last", [...vids].sort((a, b) => cmpTuple([(a.season || 0) === 0 ? 1 : 0, ...epKey(a)], [(b.season || 0) === 0 ? 1 : 0, ...epKey(b)]))];
+    }
+  }
+}
+/** Same rules as resolve_series() in the Python script. */
+async function resolveSeries(cache, cid, decoded) {
+  const { anchor, anchorLen, bits } = decoded;
+  const realigned = [];
+  let anchorSeen = false;
+  for await (const [source, order, vids] of candidateLists(cache, cid)) {
+    const idx = vids.findIndex((v) => v.id === anchor);
+    if (idx < 0) continue;
+    anchorSeen = true;
+    const offset = anchorLen - idx - 1;
+    const episodes = vids.filter((v, i) => bits.has(i + offset));
+    if (offset === 0) return [{ source, order, episodes, offset: 0 }, null];
+    if (episodes.length === bits.size) {
+      const specials = episodes.filter((v) => (v.season || 0) === 0).length;
+      realigned.push([specials, Math.abs(offset), { source, order, episodes, offset }]);
+    }
+  }
+  if (realigned.length) {
+    realigned.sort((a, b) => cmpTuple(a.slice(0, 2), b.slice(0, 2)));
+    return [realigned[0][2], null];
+  }
+  if (cache.failed.has(cid)) return [null, "unreachable"];
+  if (anchorSeen) return [null, "numbering"];
+  return [null, "anchor:" + anchor];
+}
+
+/** Read the first episode list (Cinemeta) of every watched series, a few at a time, before the in-order build. */
+async function prefetchLists(items, cache, { concurrency = 6, onProgress = null } = {}) {
+  const ids = [...new Set(items.filter((i) => i.type === "series" && (i.state || {}).watched && (i._id || "").startsWith("tt")).map((i) => i._id))];
+  let next = 0, done = 0;
+  const worker = async () => {
+    while (next < ids.length) {
+      const cid = ids[next++];
+      await cache.videos(cache.sources[0][0], "series", cid);
+      done++;
+      if (onProgress) onProgress(done, ids.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, ids.length) }, worker));
+}
+
+/** Build the Nuvio payloads from the Stremio items (same rules as cmd_build in the Python script). */
+async function buildPayloads(items, { cache = new MetaCache(), onProgress = null } = {}) {
+  const library = [], watched = [], progress = [], skipped = [], unresolved = [], decoded = [], toCheck = [];
+  const seriesTotal = items.filter((i) => i.type === "series" && (i.state || {}).watched).length;
+  let seriesDone = 0;
+  for (const it of items) {
+    const cid = it._id || "", ctype = it.type, name = it.name || "";
+    const st = it.state || {};
+    const visible = !it.removed && !it.temp;
+    if (!["movie", "series"].includes(ctype) || !(cid.startsWith("tt") || cid.startsWith("tmdb:"))) {
+      if (visible || st.watched || (st.timesWatched || 0) > 0) skipped.push({ name, cid, ctype });
+      continue;
+    }
+    const [last, added] = itemDates(it);
+
+    if (visible) {
+      const shape = String(it.posterShape || "poster").toUpperCase();
+      library.push({
+        content_id: cid, content_type: ctype, name, poster: it.poster || null,
+        poster_shape: ["POSTER", "LANDSCAPE", "SQUARE"].includes(shape) ? shape : "POSTER",
+        background: it.background || null, logo: it.logo || null,
+        release_info: it.year ? String(it.year) : null,
+        added_at: added,
+      });
+    }
+
+    if (ctype === "movie" && ((st.timesWatched || 0) > 0 || (st.flaggedWatched || 0) > 0)) {
+      watched.push({ content_id: cid, content_type: "movie", title: name, season: null, episode: null, watched_at: last });
+    }
+
+    if (ctype === "series" && st.watched) {
+      let result = null, why = null, nbits = null;
+      let dec = null;
+      try { dec = await decodeBitfield(st.watched); nbits = dec.bits.size; }
+      catch (e) { why = "unreadable"; }
+      if (dec) [result, why] = await resolveSeries(cache, cid, dec);
+      if (result) {
+        for (const v of result.episodes) {
+          if (v.season !== null && v.season !== undefined && v.episode !== null && v.episode !== undefined) {
+            watched.push({ content_id: cid, content_type: "series", title: name, season: Math.trunc(Number(v.season)), episode: Math.trunc(Number(v.episode)), watched_at: last });
+          }
+        }
+        decoded.push({ name, cid, count: result.episodes.length, source: result.source, order: result.order, offset: result.offset });
+      } else {
+        unresolved.push({ name, cid, why });
+      }
+      const counted = st.timesWatched || 0;
+      if (nbits !== null && counted - nbits >= CHECK_GAP) toCheck.push({ name, cid, counted, found: nbits });
+      seriesDone++;
+      if (onProgress) onProgress(seriesDone, seriesTotal);
+    } else if (ctype === "series" && visible && (st.timesWatched || 0) >= CHECK_GAP) {
+      toCheck.push({ name, cid, counted: st.timesWatched, found: 0 });
+    }
+
+    const offsetMs = st.timeOffset || 0, duration = st.duration || 0;
+    if (offsetMs > 0 && duration > 0 && !it.removed && PROGRESS_MIN < offsetMs / duration && offsetMs / duration < PROGRESS_MAX) {
+      const vid = st.video_id || cid;
+      let season = null, episode = null;
+      if (ctype === "series") {
+        const b = vid.split(":");
+        if (b.length >= 3 && /^\d+$/.test(b[b.length - 1]) && /^\d+$/.test(b[b.length - 2])) {
+          season = parseInt(b[b.length - 2], 10); episode = parseInt(b[b.length - 1], 10);
+        }
+      }
+      progress.push({ content_id: cid, content_type: ctype, video_id: vid, season, episode, position: Math.trunc(offsetMs), duration: Math.trunc(duration), last_watched: last, _name: name });
+    }
+  }
+  const byName = (a, b) => (a.name || "").localeCompare(b.name || "");
+  return {
+    library, watched,
+    progress: progress.map(({ _name, ...p }) => p),
+    progressNames: progress.map((p) => ({ name: p._name, video_id: p.video_id, pct: Math.round(100 * p.position / p.duration) })),
+    skipped: skipped.sort(byName), unresolved: unresolved.sort(byName), decoded: decoded.sort(byName), toCheck: toCheck.sort(byName),
+  };
+}
+
+/* ---------- Nuvio ---------- */
+function keyOf(kind, item) {
+  if (kind === "library") return JSON.stringify([item.content_id, item.content_type]);
+  if (kind === "watched") return JSON.stringify([item.content_id, item.season ?? null, item.episode ?? null]);
+  if (item.progress_key) return item.progress_key;
+  if (item.season !== null && item.season !== undefined && item.episode !== null && item.episode !== undefined) return `${item.content_id}_s${item.season}e${item.episode}`;
+  return item.content_id;
+}
+
+class Nuvio {
+  constructor() { this.base = null; this.key = null; this.token = null; this.profile = null; }
+  async discover(url = NUVIO_DISCOVERY) {
+    const doc = (await http("GET", url, { service: "Nuvio" })) || {};
+    this.base = (doc.backend_url || "").replace(/\/+$/, "");
+    this.key = doc.publishable_key || "";
+    if (!this.base || !this.key) throw new HttpError("Nuvio", "discovery", "invalid discovery document");
+  }
+  headers() {
+    const h = { apikey: this.key };
+    if (this.token) h.Authorization = "Bearer " + this.token;
+    return h;
+  }
+  async signInPassword(email, password) {
+    const res = (await http("POST", `${this.base}/auth/v1/token?grant_type=password`, { body: { email, password }, headers: this.headers(), service: "Nuvio", tries: 1, allowErrors: true })) || {};
+    this.token = res.access_token || null;
+    return !!this.token;
+  }
+  /* Connexion sans mot de passe : la même méthode que « Sign in with link » de Nuvio Mobile (nuvio.tv/link). */
+  async linkStart(deviceName) {
+    this.nonce = (crypto.randomUUID && crypto.randomUUID()) || Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+    const rows = await http("POST", `${this.base}/rest/v1/rpc/start_device_login_session`, {
+      body: { p_device_nonce: this.nonce, p_redirect_base_url: NUVIO_LINK_PAGE, p_device_name: deviceName, p_device_type: "mobile" },
+      headers: this.headers(), service: "Nuvio", tries: 2,
+    });
+    const s = Array.isArray(rows) ? rows[0] : rows;
+    if (!s || !s.device_code || !s.user_code || !s.verification_uri_complete) throw new HttpError("Nuvio", "link", "no code");
+    this.link = { deviceCode: s.device_code, userCode: s.user_code, url: s.verification_uri_complete, interval: Math.min(10, Math.max(2, s.poll_interval_seconds || 3)) };
+    return this.link;
+  }
+  async linkPoll() {
+    const rows = await http("POST", `${this.base}/rest/v1/rpc/poll_tv_login_session`, {
+      body: { p_code: this.link.deviceCode, p_device_nonce: this.nonce }, headers: this.headers(), service: "Nuvio", tries: 1,
+    });
+    const r = Array.isArray(rows) ? rows[0] : rows;
+    return String((r && r.status) || "").trim().toLowerCase();
+  }
+  async linkExchange() {
+    const res = await http("POST", `${this.base}/functions/v1/tv-logins-exchange`, {
+      body: { code: this.link.deviceCode, device_nonce: this.nonce }, headers: { apikey: this.key }, service: "Nuvio", tries: 2,
+    });
+    if (!res || !res.access_token) throw new HttpError("Nuvio", "exchange", "no token");
+    this.token = res.access_token;
+    return true;
+  }
+  /* scope=local ferme SEULEMENT cette session. Sans lui, le serveur déconnecte le compte sur tous les appareils. */
+  async signOut({ keepalive = false } = {}) {
+    if (!this.token) return;
+    const h = this.headers();
+    this.token = null;
+    await http("POST", `${this.base}/auth/v1/logout?scope=local`, { body: {}, headers: h, service: "Nuvio", tries: 1, allowErrors: true, keepalive }).catch(() => {});
+  }
+  rpc(name, params) {
+    return http("POST", `${this.base}/rest/v1/rpc/${name}`, { body: params, headers: this.headers(), service: "Nuvio" });
+  }
+  async profiles() {
+    const list = (await this.rpc("sync_pull_profiles", {})) || [];
+    return list.map((p) => ({ index: p.profile_index, name: p.name })).sort((a, b) => a.index - b.index);
+  }
+  /** Every row of the profile (the server returns at most 1000 rows per request). */
+  async rows(profile) {
+    const found = { library: new Map(), watched: new Map(), progress: new Map() };
+    for (const [kind, fn, paging] of [["library", "sync_pull_library", "offset"], ["watched", "sync_pull_watched_items", "page"]]) {
+      for (let n = 0; ; n++) {
+        const params = paging === "offset" ? { p_limit: 1000, p_offset: n * 1000 } : { p_page: n + 1, p_page_size: 1000 };
+        const page = (await this.rpc(fn, { p_profile_id: profile, ...params })) || [];
+        for (const r of page) found[kind].set(keyOf(kind, r), r);
+        if (page.length < 1000) break;
+      }
+    }
+    for (const r of (await this.rpc("sync_pull_watch_progress", { p_profile_id: profile })) || []) found.progress.set(r.progress_key, r);
+    return found;
+  }
+  async existing(profile) {
+    const rows = await this.rows(profile);
+    return { library: new Set(rows.library.keys()), watched: new Set(rows.watched.keys()), progress: new Set(rows.progress.keys()) };
+  }
+  /** Additive server functions only. sync_push_library (which REPLACES the whole library) is never used. */
+  async send(kind, items, onStep) {
+    const [fn, param] = PUSH[kind];
+    const size = BATCH[kind];
+    for (let start = 0; start < items.length; start += size) {
+      await this.rpc(fn, { [param]: items.slice(start, start + size), p_profile_id: this.profile });
+      if (onStep) onStep(Math.min(start + size, items.length), items.length);
+      await sleep(300);
+    }
+  }
+}
+function planPush(payloads, before) {
+  const todo = {}, skipped = {};
+  for (const kind of ["library", "watched", "progress"]) {
+    todo[kind] = payloads[kind].filter((it) => !before[kind].has(keyOf(kind, it)));
+    skipped[kind] = payloads[kind].length - todo[kind].length;
+  }
+  return { todo, skipped };
+}
+/* CORE END */
+</script>
+
+<script>
+/* Interface : étapes, textes FR/EN, états. */
+(() => {
+const TXT = {
+  lede: ["Copiez votre bibliothèque Stremio dans un profil Nuvio : titres enregistrés, films et épisodes vus, reprises de lecture.", "Copy your Stremio library into a Nuvio profile: saved titles, watched movies and episodes, playback positions."],
+  trust1: ["<b>Tout se passe dans votre navigateur.</b> Cette page ne contacte que Stremio, Nuvio et deux listes d’épisodes publiques (Cinemeta, Nuvio Catalog). Elle ne garde rien après fermeture.", "<b>Everything happens in your browser.</b> This page only talks to Stremio, Nuvio and two public episode lists (Cinemeta, Nuvio Catalog). Nothing is kept once you close it."],
+  trust2: ["<b>Rien n’est supprimé</b>, ni dans Stremio ni dans Nuvio : l’import ajoute seulement ce qui manque. Outil gratuit et non officiel.", "<b>Nothing is deleted</b>, in Stremio or in Nuvio: the import only adds what is missing. Free, unofficial tool."],
+  s1_title: ["Lire votre bibliothèque Stremio", "Read your Stremio library"],
+  s1_sub: ["Lecture seule : rien n’est modifié dans Stremio.", "Read-only: nothing changes in Stremio."],
+  s2_title: ["Préparer l’import", "Prepare the import"],
+  s2_sub: ["Retrouve les épisodes vus de chaque série.", "Finds the watched episodes of each series."],
+  s3_title: ["Choisir le profil Nuvio", "Choose the Nuvio profile"],
+  s3_sub: ["Connexion à votre compte Nuvio, puis choix du profil.", "Sign in to your Nuvio account, then pick the profile."],
+  s4_title: ["Ajouter à Nuvio", "Add to Nuvio"],
+  s4_sub: ["Ajout seulement : rien n’est supprimé ni remplacé.", "Add only: nothing is deleted or replaced."],
+  foot1: ["Stremio → Nuvio {v} · outil non officiel, sans lien avec Stremio ni Nuvio · licence MIT.", "Stremio → Nuvio {v} · unofficial tool, not affiliated with Stremio or Nuvio · MIT license."],
+  foot2: ["Code source et version en ligne de commande :", "Source code and command-line version:"],
+
+  file_note: ["Cette page est ouverte comme un fichier. Le serveur de Stremio refuse alors la connexion sans mot de passe. Ouvrez plutôt son adresse web, <a href=\"https://albabit.github.io/stremio-to-nuvio/\">albabit.github.io/stremio-to-nuvio</a>, ou connectez-vous avec votre e-mail et votre mot de passe.", "This page is open as a file. Stremio's server then refuses the password-free sign-in. Open its web address instead, <a href=\"https://albabit.github.io/stremio-to-nuvio/\">albabit.github.io/stremio-to-nuvio</a>, or sign in with your e-mail and password."],
+  st_link_btn: ["Se connecter sans mot de passe", "Sign in without a password"],
+  st_link_hint: ["Fonctionne aussi avec un compte Facebook ou Apple.", "Also works with a Facebook or Apple account."],
+  use_password: ["Utiliser plutôt mon e-mail et mon mot de passe", "Use my e-mail and password instead"],
+  use_link: ["Revenir à la connexion sans mot de passe", "Back to password-free sign-in"],
+  st_link_open: ["Ouvrir stremio.com", "Open stremio.com"],
+  st_link_explain: ["Ouvrez ce lien et connectez-vous à Stremio si besoin : l’approbation est automatique. Ou saisissez le code sur link.stremio.com.", "Open this link and sign in to Stremio if asked: approval is automatic. Or type the code on link.stremio.com."],
+  st_link_private: ["Si votre navigateur est déjà connecté à stremio.com, c’est <b>ce compte</b> qui est lu. Pour en choisir un autre, ouvrez le lien dans une fenêtre de navigation privée.", "If your browser is already signed in on stremio.com, <b>that account</b> is read. To choose another one, open the link in a private window."],
+  waiting: ["En attente de votre approbation…", "Waiting for your approval…"],
+  cancel: ["Annuler", "Cancel"],
+  email: ["E-mail", "E-mail"],
+  password: ["Mot de passe", "Password"],
+  st_pw_hint: ["Envoyé directement à Stremio, jamais ailleurs, et oublié aussitôt.", "Sent straight to Stremio, nowhere else, and forgotten right away."],
+  sign_in: ["Se connecter", "Sign in"],
+  st_refused: ["Connexion refusée : vérifiez l’e-mail et le mot de passe.", "Sign-in refused: check the e-mail and password."],
+  link_expired: ["Le code a expiré. Recommencez.", "The code expired. Try again."],
+  reading: ["Lecture de la bibliothèque…", "Reading the library…"],
+  st_done: ["{visible} titres dans la bibliothèque ({movies} films, {series} séries), {watched} avec quelque chose de vu, {progress} en cours.", "{visible} titles in the library ({movies} movies, {series} series), {watched} with something watched, {progress} in progress."],
+  st_empty: ["Ce compte Stremio n’a rien dans sa bibliothèque. Vérifiez que c’est le bon compte.", "This Stremio account has nothing in its library. Check that it is the right account."],
+  restart: ["Recommencer avec un autre compte", "Start over with another account"],
+
+  prep_reading: ["Lecture des listes d’épisodes : {k} sur {n} séries", "Reading episode lists: {k} of {n} series"],
+  prep_saved: ["Titres enregistrés", "Saved titles"],
+  prep_wm: ["Films vus", "Watched movies"],
+  prep_we: ["Épisodes vus", "Watched episodes"],
+  prep_pr: ["Reprises de lecture", "Playback positions"],
+  prep_sum: ["{lib} titres, {wm} films vus, {we} épisodes vus, {pr} reprises.", "{lib} titles, {wm} watched movies, {we} watched episodes, {pr} positions."],
+  prep_series_of: ["sur {n} séries", "across {n} series"],
+  check_t: ["À vérifier ({n})", "To check ({n})"],
+  check_p: ["Stremio compte plus d’épisodes vus que ceux qu’il a gardés en mémoire (revisionnages, épisodes vus ailleurs, ou marques perdues par Stremio). Après l’import, regardez ces séries dans Nuvio et cochez à la main ce qui manque.", "Stremio counts more watched episodes than the ones it kept (rewatches, episodes seen elsewhere, or marks Stremio lost). After the import, look at these series in Nuvio and tick what is missing by hand."],
+  check_li: ["{name} : {counted} comptés, {found} retrouvés", "{name}: {counted} counted, {found} found"],
+  unres_t: ["Séries non décodées ({n})", "Series not decoded ({n})"],
+  unres_p: ["Leurs épisodes vus n’ont pas pu être retrouvés : cochez-les à la main dans Nuvio. Les autres données de ces séries sont bien importées.", "Their watched episodes could not be found: tick them by hand in Nuvio. Their other data is imported."],
+  why_numbering: ["numérotation différente de celle de Stremio", "episode numbering differs from Stremio’s"],
+  why_anchor: ["dernier épisode vu introuvable dans les listes d’épisodes", "last watched episode not found in the episode lists"],
+  why_unreadable: ["données Stremio illisibles", "unreadable Stremio data"],
+  why_unreachable: ["liste d’épisodes injoignable pour l’instant", "episode list unreachable for now"],
+  unreachable_note: ["{n} séries n’ont pas pu être lues : leur liste d’épisodes n’a pas répondu. Réessayez avant de continuer.", "{n} series could not be read: their episode list did not answer. Try again before continuing."],
+  skip_t: ["Laissés de côté ({n})", "Left out ({n})"],
+  skip_p: ["Nuvio ne sait pas les lire : chaînes TV et contenus d’autres addons.", "Nuvio cannot read them: TV channels and other add-ons’ content."],
+  prog_t: ["Reprises de lecture ({n})", "Playback positions ({n})"],
+  none: ["Aucun.", "None."],
+  prep_next: ["Continuer", "Continue"],
+
+  nv_link_btn: ["Se connecter sans mot de passe", "Sign in without a password"],
+  nv_link_hint: ["Vous approuvez cette page depuis nuvio.tv, comme pour relier Lumio.", "You approve this page from nuvio.tv, like when linking Lumio."],
+  nv_link_open: ["Ouvrir nuvio.tv/link", "Open nuvio.tv/link"],
+  nv_link_explain: ["Ouvrez nuvio.tv/link, connectez-vous à votre compte Nuvio si besoin, vérifiez le code puis approuvez. Depuis un autre appareil, saisissez le code sur nuvio.tv/link.", "Open nuvio.tv/link, sign in to your Nuvio account if asked, check the code, then approve. From another device, type the code on nuvio.tv/link."],
+  nv_pw_hint: ["Envoyé directement à Nuvio, jamais ailleurs, et oublié aussitôt.", "Sent straight to Nuvio, nowhere else, and forgotten right away."],
+  nv_refused: ["Connexion refusée : vérifiez l’e-mail et le mot de passe Nuvio.", "Sign-in refused: check the Nuvio e-mail and password."],
+  nv_link_failed: ["La connexion n’a pas abouti. Recommencez, ou utilisez votre e-mail et votre mot de passe.", "Sign-in did not complete. Try again, or use your e-mail and password."],
+  nv_connected: ["Connecté à Nuvio.", "Signed in to Nuvio."],
+  nv_pick: ["Dans quel profil ajouter la bibliothèque ?", "Which profile should receive the library?"],
+  nv_counting: ["Lecture du profil « {name} »…", "Reading profile “{name}”…"],
+  nv_profile: ["Profil « {name} »", "Profile “{name}”"],
+  plan_head_kind: ["", ""],
+  plan_head_there: ["Déjà dans le profil", "Already in the profile"],
+  plan_head_dup: ["Déjà là, ignorés", "Already there, skipped"],
+  plan_head_send: ["À ajouter", "To add"],
+  plan_lib: ["Titres enregistrés", "Saved titles"],
+  plan_watched: ["Films et épisodes vus", "Watched movies and episodes"],
+  plan_progress: ["Reprises de lecture", "Playback positions"],
+  plan_nothing: ["Tout est déjà dans ce profil : rien à ajouter.", "Everything is already in this profile: nothing to add."],
+  plan_shared: ["Compte partagé ? Vérifiez bien le profil choisi : l’import ne peut pas être annulé d’un clic (rien n’est supprimé, mais ce qui est ajouté reste).", "Shared account? Double-check the profile: the import cannot be undone in one click (nothing is deleted, but what is added stays)."],
+  send_btn: ["Ajouter à « {name} »", "Add to “{name}”"],
+  sending: ["Envoi en cours, gardez cette page ouverte…", "Sending, keep this page open…"],
+  sent_kind: ["{kind} : {k} sur {n}", "{kind}: {k} of {n}"],
+  done_title: ["C’est fait.", "Done."],
+  done_counts: ["Maintenant dans « {name} » : {l} titres enregistrés, {w} « vu », {p} reprises.", "Now in “{name}”: {l} saved titles, {w} watched, {p} positions."],
+  done_restart: ["Fermez complètement Nuvio, puis rouvrez-le sur ce profil. Sur une TV Android : Paramètres › Applications › Nuvio › Forcer l’arrêt.", "Fully close Nuvio, then reopen it on this profile. On an Android TV: Settings › Apps › Nuvio › Force stop."],
+  done_badges: ["Les coches « vu » des séries apparaissent au fil des ouvertures de Nuvio, ou dès que vous ouvrez la fiche d’une série.", "Series “watched” ticks appear over the next Nuvio launches, or as soon as you open a series page."],
+  done_signedout: ["Cette page s’est déconnectée de Nuvio et de Stremio.", "This page signed out of Nuvio and Stremio."],
+  again: ["Importer une autre bibliothèque", "Import another library"],
+  other_profile: ["Ajouter aussi à un autre profil", "Also add to another profile"],
+  err_net: ["Impossible de joindre {service}. Vérifiez votre connexion, puis réessayez.", "Cannot reach {service}. Check your connection, then try again."],
+  err_http: ["{service} a répondu une erreur ({status}). Réessayez dans un moment.", "{service} returned an error ({status}). Try again in a moment."],
+  err_session: ["La session Nuvio a expiré. Reconnectez-vous.", "The Nuvio session expired. Sign in again."],
+  err_browser: ["Ce navigateur est trop ancien pour cette page. Utilisez une version récente de Chrome, Edge, Firefox ou Safari.", "This browser is too old for this page. Use a recent Chrome, Edge, Firefox or Safari."],
+  retry: ["Réessayer", "Try again"],
+};
+
+let LANG = "fr";
+try { const saved = localStorage.getItem("s2n-lang"); if (saved === "fr" || saved === "en") LANG = saved; else LANG = /^fr\b/i.test(navigator.language || "") ? "fr" : "en"; } catch { LANG = /^fr\b/i.test(navigator.language || "") ? "fr" : "en"; }
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = (n) => Number(n).toLocaleString(LANG === "fr" ? "fr-FR" : "en-US");
+function t(key, vars = {}) {
+  const pair = TXT[key];
+  let s = pair ? pair[LANG === "fr" ? 0 : 1] : key;
+  return s.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? (typeof vars[k] === "number" ? nf(vars[k]) : esc(vars[k])) : ""));
+}
+const $ = (sel) => document.querySelector(sel);
+const live = (msg) => { $("#live").textContent = msg; };
+
+/* ---------- état ---------- */
+const S = {
+  step: 1,
+  s1: { mode: "link", phase: "idle", link: null, error: null, counts: null },
+  items: null,
+  s2: { phase: "idle", k: 0, n: 0, result: null, error: null },
+  nuvio: null,
+  s3: { mode: "link", phase: "idle", link: null, error: null, profiles: null, chosen: null, counting: false, plan: null, before: null },
+  s4: { phase: "idle", progress: {}, after: null, error: null },
+};
+let flowId = 0; // annule les attentes en cours quand on recommence
+
+function errText(e) {
+  if (e instanceof HttpError) {
+    if (e.status === "network") return t("err_net", { service: e.service });
+    if (e.status === 401 && e.service === "Nuvio") return t("err_session");
+    return t("err_http", { service: e.service, status: String(e.status) });
+  }
+  return String(e && e.message || e);
+}
+
+/* ---------- rendu ---------- */
+function setStepStates() {
+  for (let i = 1; i <= 4; i++) {
+    const el = $("#s" + i);
+    el.dataset.state = i < S.step ? "done" : i === S.step ? "active" : "todo";
+  }
+}
+function staticTexts() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i]").forEach((el) => { el.innerHTML = t(el.dataset.i, { v: VERSION }); });
+  document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === LANG)));
+}
+function render() {
+  staticTexts();
+  setStepStates();
+  renderS1(); renderS2(); renderS3(); renderS4();
+}
+
+function credsForm(id, hintKey) {
+  return `<form class="creds" id="${id}" autocomplete="on">
+    <label class="f">${t("email")}<input type="email" name="email" autocomplete="username" required></label>
+    <label class="f">${t("password")}<input type="password" name="password" autocomplete="current-password" required></label>
+    <p class="hint">${t(hintKey)}</p>
+    <div class="row"><button class="btn primary" type="submit">${t("sign_in")}</button></div>
+  </form>`;
+}
+const errorNote = (msg, retryAction) => `<div class="note bad"><p>${esc(msg)}</p>${retryAction ? `<p><button class="linkish" type="button" data-act="${retryAction}">${t("retry")}</button></p>` : ""}</div>`;
+
+function renderS1() {
+  const b = $("#s1body"), x = S.s1;
+  if (x.counts) {
+    $("#s1sum").innerHTML = x.counts.visible === 0 && x.counts.watched === 0 ? t("st_empty") : t("st_done", x.counts);
+    b.innerHTML = S.step === 1 ? "" : `<div><button class="linkish" type="button" data-act="restart">${t("restart")}</button></div>`;
+    return;
+  }
+  $("#s1sum").innerHTML = t("s1_sub");
+  let h = "";
+  if (x.phase === "reading") {
+    h = `<div class="wait"><span class="spinner"></span>${t("reading")}</div>`;
+  } else if (x.mode === "link") {
+    if (x.phase === "waiting" && x.link) {
+      h = `<div class="codebox">
+        <span class="code">${esc(x.link.code)}</span>
+        <p class="hint">${t("st_link_explain")}</p>
+        <div class="row"><a class="btn primary" href="${esc(x.link.link)}" target="_blank" rel="noopener noreferrer">${t("st_link_open")}</a><span class="small-code">${esc(x.link.link)}</span></div>
+      </div>
+      <div class="note warn"><p>${t("st_link_private")}</p></div>
+      <div class="wait"><span class="spinner"></span>${t("waiting")} <button class="linkish" type="button" data-act="s1cancel">${t("cancel")}</button></div>`;
+    } else {
+      h = `<div class="choice"><div class="row"><button class="btn primary" type="button" data-act="s1link">${t("st_link_btn")}</button></div><p class="hint">${t("st_link_hint")}</p></div>
+      <button class="linkish" type="button" data-act="s1pw">${t("use_password")}</button>`;
+    }
+  } else {
+    h = credsForm("s1form", "st_pw_hint") + `<button class="linkish" type="button" data-act="s1linkmode">${t("use_link")}</button>`;
+  }
+  if (x.error) h = errorNote(x.error) + h;
+  if (location.protocol === "file:" && x.phase !== "reading") h = `<div class="note warn"><p>${t("file_note")}</p></div>` + h;
+  b.innerHTML = h;
+}
+
+function listBlock(titleKey, n, pKey, items) {
+  return `<details class="more"><summary>${t(titleKey, { n })}</summary>${pKey ? `<p>${t(pKey)}</p>` : ""}<ul>${items.length ? items.join("") : `<li>${t("none")}</li>`}</ul></details>`;
+}
+function renderS2() {
+  const b = $("#s2body"), x = S.s2;
+  if (S.step < 2) { b.innerHTML = ""; $("#s2sum").innerHTML = t("s2_sub"); return; }
+  if (x.phase === "running") {
+    const pct = x.n ? Math.round(100 * x.k / x.n) : 0;
+    b.innerHTML = `<p>${t("prep_reading", { k: x.k, n: x.n })}</p><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"><i style="width:${pct}%"></i></div>`;
+    return;
+  }
+  if (x.error) { b.innerHTML = errorNote(x.error, "s2retry"); return; }
+  const r = x.result;
+  if (!r) { b.innerHTML = ""; return; }
+  const wm = r.watched.filter((w) => w.content_type === "movie").length;
+  const we = r.watched.length - wm;
+  $("#s2sum").innerHTML = t("prep_sum", { lib: r.library.length, wm, we, pr: r.progress.length });
+  if (S.step > 2) { b.innerHTML = ""; return; }
+  const whyText = (w) => w === "numbering" ? t("why_numbering") : w === "unreadable" ? t("why_unreadable") : w === "unreachable" ? t("why_unreachable") : t("why_anchor");
+  const unreachable = r.unresolved.filter((u) => u.why === "unreachable").length;
+  b.innerHTML = (unreachable ? `<div class="note warn"><p>${t("unreachable_note", { n: unreachable })}</p><p><button class="linkish" type="button" data-act="s2retry">${t("retry")}</button></p></div>` : "") + `<div class="stats">
+      <div class="stat"><b>${nf(r.library.length)}</b><span>${t("prep_saved")}</span></div>
+      <div class="stat"><b>${nf(wm)}</b><span>${t("prep_wm")}</span></div>
+      <div class="stat"><b>${nf(we)}</b><span>${t("prep_we")} ${t("prep_series_of", { n: r.decoded.length })}</span></div>
+      <div class="stat"><b>${nf(r.progress.length)}</b><span>${t("prep_pr")}</span></div>
+    </div>
+    ${r.toCheck.length ? listBlock("check_t", r.toCheck.length, "check_p", r.toCheck.map((c) => `<li>${t("check_li", { name: c.name || c.cid, counted: c.counted, found: c.found })}</li>`)) : ""}
+    ${listBlock("unres_t", r.unresolved.length, "unres_p", r.unresolved.map((u) => `<li>${esc(u.name || u.cid)} : ${whyText(u.why)}</li>`))}
+    ${listBlock("skip_t", r.skipped.length, "skip_p", r.skipped.map((s) => `<li>${esc(s.name || s.cid)}</li>`))}
+    ${listBlock("prog_t", r.progressNames.length, null, r.progressNames.map((p) => `<li>${esc(p.name)} (${esc(p.video_id)}), ${p.pct} %</li>`))}
+    <div class="row"><button class="btn primary" type="button" data-act="s2next">${t("prep_next")}</button></div>`;
+}
+
+function planTable(before, plan) {
+  const row = (k, label) => `<tr><td>${t(label)}</td><td>${nf(before[k].size)}</td><td>${nf(plan.skipped[k])}</td><td class="send">${nf(plan.todo[k].length)}</td></tr>`;
+  return `<div class="tablewrap"><table class="plan"><thead><tr><th></th><th>${t("plan_head_there")}</th><th>${t("plan_head_dup")}</th><th>${t("plan_head_send")}</th></tr></thead>
+    <tbody>${row("library", "plan_lib")}${row("watched", "plan_watched")}${row("progress", "plan_progress")}</tbody></table></div>`;
+}
+function renderS3() {
+  const b = $("#s3body"), x = S.s3;
+  if (S.step < 3) { b.innerHTML = ""; $("#s3sum").innerHTML = t("s3_sub"); return; }
+  if (S.step > 3) { $("#s3sum").innerHTML = t("nv_profile", { name: x.chosen.name }); b.innerHTML = ""; return; }
+  $("#s3sum").innerHTML = t("s3_sub");
+  let h = "";
+  if (x.profiles) {
+    h = `<p>${t("nv_connected")} ${t("nv_pick")}</p><div class="profiles" role="radiogroup">${x.profiles.map((p) => `<label class="prof"><input type="radio" name="prof" value="${p.index}" ${x.chosen && x.chosen.index === p.index ? "checked" : ""}><span>${esc(p.name)}</span></label>`).join("")}</div>`;
+    if (x.counting) h += `<div class="wait"><span class="spinner"></span>${t("nv_counting", { name: x.chosen.name })}</div>`;
+    else if (x.plan) {
+      const total = x.plan.todo.library.length + x.plan.todo.watched.length + x.plan.todo.progress.length;
+      h += planTable(x.before, x.plan);
+      h += total ? `<div class="note warn"><p>${t("plan_shared")}</p></div><div class="row"><button class="btn primary" type="button" data-act="s3send">${t("send_btn", { name: x.chosen.name })}</button></div>`
+                 : `<div class="note ok"><p>${t("plan_nothing")}</p></div>`;
+    }
+  } else if (x.phase === "connecting") {
+    h = `<div class="wait"><span class="spinner"></span>${t("reading")}</div>`;
+  } else if (x.mode === "link") {
+    if (x.phase === "waiting" && x.link) {
+      h = `<div class="codebox">
+        <span class="code">${esc(formatNuvioCode(x.link.userCode))}</span>
+        <p class="hint">${t("nv_link_explain")}</p>
+        <div class="row"><a class="btn primary" href="${esc(x.link.url)}" target="_blank" rel="noopener noreferrer">${t("nv_link_open")}</a></div>
+      </div>
+      <div class="wait"><span class="spinner"></span>${t("waiting")} <button class="linkish" type="button" data-act="s3cancel">${t("cancel")}</button></div>`;
+    } else {
+      h = `<div class="choice"><div class="row"><button class="btn primary" type="button" data-act="s3link">${t("nv_link_btn")}</button></div><p class="hint">${t("nv_link_hint")}</p></div>
+      <button class="linkish" type="button" data-act="s3pw">${t("use_password")}</button>`;
+    }
+  } else {
+    h = credsForm("s3form", "nv_pw_hint") + `<button class="linkish" type="button" data-act="s3linkmode">${t("use_link")}</button>`;
+  }
+  if (x.error) h = errorNote(x.error) + h;
+  b.innerHTML = h;
+}
+function formatNuvioCode(v) {
+  const n = String(v).toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+  return n.length <= 3 ? n : n.slice(0, 3) + "-" + n.slice(3);
+}
+
+function renderS4() {
+  const b = $("#s4body"), x = S.s4;
+  if (S.step < 4) { b.innerHTML = ""; $("#s4sum").innerHTML = t("s4_sub"); return; }
+  $("#s4sum").innerHTML = t("s4_sub");
+  const kinds = [["library", "plan_lib"], ["watched", "plan_watched"], ["progress", "plan_progress"]];
+  if (x.phase === "sending") {
+    b.innerHTML = `<div class="wait"><span class="spinner"></span>${t("sending")}</div>` + kinds.map(([k, label]) => {
+      const p = x.progress[k] || { k: 0, n: S.s3.plan.todo[k].length };
+      const pct = p.n ? Math.round(100 * p.k / p.n) : 100;
+      return `<p class="hint">${t("sent_kind", { kind: t(label), k: p.k, n: p.n })}</p><div class="bar"><i style="width:${pct}%"></i></div>`;
+    }).join("");
+    return;
+  }
+  if (x.error) { b.innerHTML = errorNote(x.error, "s4retry"); return; }
+  if (x.phase === "done" && x.after) {
+    b.innerHTML = `<div class="note ok"><p><b>${t("done_title")}</b> ${t("done_counts", { name: S.s3.chosen.name, l: x.after.library.size, w: x.after.watched.size, p: x.after.progress.size })}</p></div>
+      <p>${t("done_restart")}</p><p class="hint">${t("done_badges")}</p><p class="hint">${t("done_signedout")}</p>
+      <div class="row"><button class="btn secondary" type="button" data-act="again">${t("again")}</button></div>`;
+  }
+}
+
+/* ---------- actions ---------- */
+async function s1Link() {
+  const my = ++flowId;
+  S.s1.error = null; S.s1.phase = "starting"; render();
+  try {
+    const link = await stremioLinkCreate();
+    if (my !== flowId) return;
+    S.s1.link = link; S.s1.phase = "waiting"; render(); live(t("waiting"));
+    const deadline = Date.now() + 5 * 60 * 1000;
+    while (Date.now() < deadline) {
+      await sleep(3000);
+      if (my !== flowId) return;
+      const key = await stremioLinkRead(link.code).catch(() => null);
+      if (my !== flowId) return;
+      if (key) return s1Read(key, my);
+    }
+    S.s1.phase = "idle"; S.s1.error = t("link_expired"); render();
+  } catch (e) { if (my === flowId) { S.s1.phase = "idle"; S.s1.error = errText(e); render(); } }
+}
+async function s1Password(form) {
+  const my = ++flowId;
+  const email = form.email.value.trim(), password = form.password.value;
+  form.password.value = "";
+  S.s1.error = null; S.s1.phase = "reading"; render();
+  try {
+    const key = await stremioLoginPassword(email, password);
+    if (!key) { S.s1.phase = "idle"; S.s1.error = t("st_refused"); render(); return; }
+    await s1Read(key, my);
+  } catch (e) { S.s1.phase = "idle"; S.s1.error = errText(e); render(); }
+}
+async function s1Read(key, my) {
+  S.s1.phase = "reading"; S.s1.link = null; render();
+  try {
+    const items = await stremioExport(key);
+    if (my !== flowId) return;
+    S.items = items; S.s1.counts = exportCounts(items); S.s1.phase = "done";
+    if (S.s1.counts.visible === 0 && S.s1.counts.watched === 0) { render(); return; }
+    S.step = 2; render(); live(t("st_done", S.s1.counts));
+    s2Run();
+  } catch (e) { if (my === flowId) { S.s1.phase = "idle"; S.s1.error = errText(e); render(); } }
+}
+
+async function s2Run() {
+  const my = flowId;
+  S.s2 = { phase: "running", k: 0, n: S.items.filter((i) => i.type === "series" && (i.state || {}).watched).length, result: null, error: null };
+  S.metaCache = S.metaCache || new MetaCache();
+  render();
+  const step = (k, n) => { if (my !== flowId) return; S.s2.k = k; S.s2.n = n; renderS2(); };
+  try {
+    await prefetchLists(S.items, S.metaCache, { onProgress: step });
+    if (my !== flowId) return;
+    const result = await buildPayloads(S.items, { cache: S.metaCache, onProgress: step });
+    if (my !== flowId) return;
+    S.s2.phase = "done"; S.s2.result = result; render();
+  } catch (e) { if (my === flowId) { S.s2.phase = "error"; S.s2.error = errText(e); render(); } }
+}
+
+async function s3Connected(my) {
+  S.s3.phase = "connecting"; render();
+  const profiles = await S.nuvio.profiles();
+  if (my !== flowId) return;
+  S.s3.profiles = profiles; S.s3.phase = "profiles"; S.s3.link = null;
+  if (profiles.length === 1) return s3Choose(profiles[0].index);
+  render();
+}
+async function s3Link() {
+  const my = ++flowId;
+  S.s3.error = null; S.s3.phase = "starting"; render();
+  try {
+    S.nuvio = S.nuvio || new Nuvio();
+    if (!S.nuvio.base) await S.nuvio.discover();
+    const link = await S.nuvio.linkStart(LANG === "fr" ? "Stremio vers Nuvio (navigateur)" : "Stremio to Nuvio (browser)");
+    if (my !== flowId) return;
+    S.s3.link = link; S.s3.phase = "waiting"; render(); live(t("waiting"));
+    let failures = 0;
+    for (let attempt = 0; attempt < 120; attempt++) {
+      await sleep(link.interval * 1000);
+      if (my !== flowId) return;
+      let status;
+      try { status = await S.nuvio.linkPoll(); failures = 0; }
+      catch (e) { if (++failures >= 3) throw e; continue; }
+      if (my !== flowId) return;
+      if (status === "pending") continue;
+      if (status === "approved") { await S.nuvio.linkExchange(); return s3Connected(my); }
+      S.s3.phase = "idle"; S.s3.error = t("link_expired"); render(); return;
+    }
+    S.s3.phase = "idle"; S.s3.error = t("link_expired"); render();
+  } catch (e) { if (my === flowId) { S.s3.phase = "idle"; S.s3.error = e instanceof HttpError && e.status !== "network" ? t("nv_link_failed") : errText(e); render(); } }
+}
+async function s3Password(form) {
+  const my = ++flowId;
+  const email = form.email.value.trim(), password = form.password.value;
+  form.password.value = "";
+  S.s3.error = null; S.s3.phase = "connecting"; render();
+  try {
+    S.nuvio = S.nuvio || new Nuvio();
+    if (!S.nuvio.base) await S.nuvio.discover();
+    if (!(await S.nuvio.signInPassword(email, password))) { S.s3.phase = "idle"; S.s3.error = t("nv_refused"); render(); return; }
+    await s3Connected(my);
+  } catch (e) { if (my === flowId) { S.s3.phase = "idle"; S.s3.error = errText(e); render(); } }
+}
+async function s3Choose(index) {
+  const my = flowId;
+  const p = S.s3.profiles.find((q) => q.index === index);
+  S.s3.chosen = p; S.s3.plan = null; S.s3.counting = true; S.s3.error = null; render();
+  try {
+    const before = await S.nuvio.existing(index);
+    if (my !== flowId || S.s3.chosen !== p) return;
+    S.nuvio.profile = index;
+    S.s3.before = before; S.s3.plan = planPush(S.s2.result, before); S.s3.counting = false; render();
+  } catch (e) { if (my === flowId) { S.s3.counting = false; S.s3.error = errText(e); render(); } }
+}
+async function s4Send() {
+  S.step = 4; S.s4 = { phase: "sending", progress: {}, after: null, error: null }; render();
+  try {
+    for (const kind of ["library", "watched", "progress"]) {
+      const items = S.s3.plan.todo[kind];
+      S.s4.progress[kind] = { k: 0, n: items.length }; renderS4();
+      await S.nuvio.send(kind, items, (k, n) => { S.s4.progress[kind] = { k, n }; renderS4(); });
+    }
+    const after = await S.nuvio.existing(S.s3.chosen.index);
+    S.s4.after = after; S.s4.phase = "done";
+    await S.nuvio.signOut();
+    render(); live(t("done_title"));
+  } catch (e) { S.s4.phase = "error"; S.s4.error = errText(e); render(); }
+}
+async function restartAll() {
+  flowId++;
+  if (S.nuvio) await S.nuvio.signOut();
+  S.step = 1; S.items = null; S.nuvio = null; S.metaCache = null;
+  S.s1 = { mode: "link", phase: "idle", link: null, error: null, counts: null };
+  S.s2 = { phase: "idle", k: 0, n: 0, result: null, error: null };
+  S.s3 = { mode: "link", phase: "idle", link: null, error: null, profiles: null, chosen: null, counting: false, plan: null, before: null };
+  S.s4 = { phase: "idle", progress: {}, after: null, error: null };
+  render();
+}
+
+document.addEventListener("click", (ev) => {
+  const lb = ev.target.closest(".lang button");
+  if (lb) { LANG = lb.dataset.lang; try { localStorage.setItem("s2n-lang", LANG); } catch {} render(); return; }
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  const act = el.dataset.act;
+  if (act === "s1link") s1Link();
+  else if (act === "s1pw") { S.s1.mode = "password"; S.s1.error = null; render(); const f = $("#s1form input[name=email]"); if (f) f.focus(); }
+  else if (act === "s1linkmode") { S.s1.mode = "link"; S.s1.error = null; render(); }
+  else if (act === "s1cancel") { flowId++; S.s1.phase = "idle"; S.s1.link = null; render(); }
+  else if (act === "restart" || act === "again") restartAll();
+  else if (act === "s2retry") s2Run();
+  else if (act === "s2next") { S.step = 3; render(); }
+  else if (act === "s3link") s3Link();
+  else if (act === "s3pw") { S.s3.mode = "password"; S.s3.error = null; render(); const f = $("#s3form input[name=email]"); if (f) f.focus(); }
+  else if (act === "s3linkmode") { S.s3.mode = "link"; S.s3.error = null; render(); }
+  else if (act === "s3cancel") { flowId++; S.s3.phase = "idle"; S.s3.link = null; render(); }
+  else if (act === "s3send") s4Send();
+  else if (act === "s4retry") { S.step = 3; S.s4 = { phase: "idle", progress: {}, after: null, error: null }; s3Choose(S.s3.chosen.index); }
+});
+document.addEventListener("change", (ev) => {
+  if (ev.target.name === "prof") s3Choose(Number(ev.target.value));
+});
+document.addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  if (ev.target.id === "s1form") s1Password(ev.target);
+  else if (ev.target.id === "s3form") s3Password(ev.target);
+});
+// Page fermée en cours de route : on ferme la session Nuvio de cette page (jamais les autres appareils).
+window.addEventListener("pagehide", () => { if (S.nuvio && S.nuvio.token) S.nuvio.signOut({ keepalive: true }); });
+
+if (typeof DecompressionStream === "undefined" || typeof fetch === "undefined") {
+  document.querySelector(".steps").innerHTML = `<li class="step"><div class="note bad"><p>${t("err_browser")}</p></div></li>`;
+  staticTexts();
+} else {
+  render();
+}
+})();
+</script>
+</body>
+</html>

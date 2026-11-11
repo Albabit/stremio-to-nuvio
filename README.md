@@ -3,12 +3,10 @@
 **English** · [Français](README.fr.md)
 
 Copy your **Stremio library into a Nuvio profile**: saved titles, watched movies and episodes, and your
-"Continue Watching" positions. One Python file, no extra packages, works on Windows, macOS and Linux.
+"Continue Watching" positions. Use the **web page** (nothing to install) or **one Python file** (no extra packages, Windows, macOS and Linux).
 
 > Unofficial tool, not affiliated with Stremio or Nuvio. It only **adds** data to the Nuvio profile you name:
 > nothing is ever deleted, in Stremio or in Nuvio.
-
-**[⬇ Download stremio_to_nuvio.py](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py)** (latest version) · [Release notes](https://github.com/Albabit/stremio-to-nuvio/releases/latest)
 
 ## What gets copied
 
@@ -22,6 +20,27 @@ Copy your **Stremio library into a Nuvio profile**: saved titles, watched movies
 Not copied: TV channels and items coming from other add-ons that Nuvio cannot read (they are listed in the report).
 
 Tested on two real libraries of 480 and 680 titles (5,400 watched marks in total).
+
+## Easiest: the web page
+
+**[Open the web page: albabit.github.io/stremio-to-nuvio](https://albabit.github.io/stremio-to-nuvio/)**
+
+- **Nothing to install.** Any recent browser, on a computer or a phone, in English or French.
+- **No password needed.** You approve the page from Stremio (stremio.com link) and from Nuvio (code on
+  [nuvio.tv/link](https://nuvio.tv/link)), like when you link an add-on. E-mail and password remain available as a fallback.
+- **Everything runs in your browser.** The page only talks to Stremio, Nuvio and two public episode lists (Cinemeta,
+  Nuvio Catalog); its Content-Security-Policy blocks any other address. Nothing is stored, and it only closes the
+  sessions it opened itself.
+- **Same results as the script** (tested on the same libraries), plus a **To check** list: series where Stremio counts
+  more watched episodes than it kept (rewatches, episodes seen elsewhere, marks lost by Stremio).
+- Open it from its web address. Opened as a downloaded file, Stremio's link server refuses the password-free sign-in.
+  To run your own copy: `python3 -m http.server 8000` in the `docs` folder, then open http://localhost:8000.
+
+## Command-line version (Python)
+
+For the terminal, or for the advanced options (self-hosted Nuvio server, extra metadata sources, `fix-dates`).
+
+**[⬇ Download stremio_to_nuvio.py](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py)** (latest version) · [Release notes](https://github.com/Albabit/stremio-to-nuvio/releases/latest)
 
 ## Before you start
 

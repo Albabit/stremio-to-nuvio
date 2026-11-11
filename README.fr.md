@@ -3,12 +3,10 @@
 [English](README.md) · **Français**
 
 Copiez votre **bibliothèque Stremio dans un profil Nuvio** : titres enregistrés, films et épisodes vus, et reprises de
-lecture (« Continuer à regarder »). Un seul fichier Python, sans module à installer, sous Windows, macOS et Linux.
+lecture (« Continuer à regarder »). Avec la **page web** (rien à installer) ou **un seul fichier Python** (sans module à installer, sous Windows, macOS et Linux).
 
 > Outil non officiel, sans lien avec Stremio ni Nuvio. Il ne fait qu'**ajouter** des données au profil Nuvio que vous
 > nommez : rien n'est jamais supprimé, ni dans Stremio, ni dans Nuvio.
-
-**[⬇ Télécharger stremio_to_nuvio.py](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py)** (dernière version) · [Notes de version](https://github.com/Albabit/stremio-to-nuvio/releases/latest)
 
 ## Ce qui est copié
 
@@ -22,6 +20,29 @@ lecture (« Continuer à regarder »). Un seul fichier Python, sans module à in
 Non copiés : les chaînes TV et les éléments venus d'autres addons que Nuvio ne sait pas lire (listés dans le rapport).
 
 Testé sur deux vraies bibliothèques de 480 et 680 titres (5 400 coches « vu » au total).
+
+## Le plus simple : la page web
+
+**[Ouvrir la page web : albabit.github.io/stremio-to-nuvio](https://albabit.github.io/stremio-to-nuvio/)**
+
+- **Rien à installer.** N'importe quel navigateur récent, sur ordinateur ou téléphone, en français ou en anglais.
+- **Aucun mot de passe à donner.** Vous approuvez la page depuis Stremio (lien stremio.com) et depuis Nuvio (code sur
+  [nuvio.tv/link](https://nuvio.tv/link)), comme pour relier un addon. L'e-mail et le mot de passe restent possibles en secours.
+- **Tout se passe dans votre navigateur.** La page ne contacte que Stremio, Nuvio et deux listes d'épisodes publiques
+  (Cinemeta, Nuvio Catalog) ; sa règle de sécurité (Content-Security-Policy) bloque toute autre adresse. Rien n'est
+  enregistré, et elle ne ferme que les sessions qu'elle a ouvertes.
+- **Mêmes résultats que le script** (testé sur les mêmes bibliothèques), avec en plus une liste **À vérifier** : les
+  séries dont Stremio compte plus d'épisodes vus qu'il n'en a gardé (revisionnages, épisodes vus ailleurs, marques
+  perdues par Stremio).
+- Ouvrez-la depuis son adresse web. Ouverte comme fichier téléchargé, le serveur de liens de Stremio refuse la connexion
+  sans mot de passe. Pour lancer votre propre copie : `python3 -m http.server 8000` dans le dossier `docs`, puis
+  ouvrez http://localhost:8000.
+
+## Version en ligne de commande (Python)
+
+Pour le terminal, ou pour les options avancées (serveur Nuvio auto-hébergé, sources de métadonnées en plus, `fix-dates`).
+
+**[⬇ Télécharger stremio_to_nuvio.py](https://github.com/Albabit/stremio-to-nuvio/releases/latest/download/stremio_to_nuvio.py)** (dernière version) · [Notes de version](https://github.com/Albabit/stremio-to-nuvio/releases/latest)
 
 ## Avant de commencer
 
