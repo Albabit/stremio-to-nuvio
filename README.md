@@ -29,8 +29,11 @@ Tested on two real libraries of 480 and 680 titles (5,400 watched marks in total
 - **No password needed.** You approve the page from Stremio (stremio.com link) and from Nuvio (code on
   [nuvio.tv/link](https://nuvio.tv/link)), like when you link an add-on. E-mail and password remain available as a fallback.
 - **Everything runs in your browser.** The page only talks to Stremio, Nuvio and two public episode lists (Cinemeta,
-  Nuvio Catalog); its Content-Security-Policy blocks any other address. Nothing is stored, and it only closes the
-  sessions it opened itself.
+  Nuvio Catalog), plus your own metadata add-on if you choose it; its Content-Security-Policy only allows secure (https)
+  connections. Nothing is stored, and it only closes the sessions it opened itself.
+- **Optional: your metadata add-on.** If Stremio uses another metadata add-on than Cinemeta (AIOMetadata, TMDB…), the
+  page can read its episode lists first: pick it from the add-ons found in your Stremio account, or paste its manifest
+  link. Mostly useful when some series are not decoded.
 - **Same results as the script** (tested on the same libraries), plus a **To check** list: series where Stremio counts
   more watched episodes than it kept (rewatches, episodes seen elsewhere, marks lost by Stremio).
 - Open it from its web address. Opened as a downloaded file, Stremio's link server refuses the password-free sign-in.

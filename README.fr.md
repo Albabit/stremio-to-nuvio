@@ -29,8 +29,12 @@ Testé sur deux vraies bibliothèques de 480 et 680 titres (5 400 coches « vu �
 - **Aucun mot de passe à donner.** Vous approuvez la page depuis Stremio (lien stremio.com) et depuis Nuvio (code sur
   [nuvio.tv/link](https://nuvio.tv/link)), comme pour relier un addon. L'e-mail et le mot de passe restent possibles en secours.
 - **Tout se passe dans votre navigateur.** La page ne contacte que Stremio, Nuvio et deux listes d'épisodes publiques
-  (Cinemeta, Nuvio Catalog) ; sa règle de sécurité (Content-Security-Policy) bloque toute autre adresse. Rien n'est
-  enregistré, et elle ne ferme que les sessions qu'elle a ouvertes.
+  (Cinemeta, Nuvio Catalog), plus votre propre addon de fiches si vous le choisissez ; sa règle de sécurité
+  (Content-Security-Policy) n'autorise que les connexions sécurisées (https). Rien n'est enregistré, et elle ne ferme
+  que les sessions qu'elle a ouvertes.
+- **Option : votre addon de fiches.** Si Stremio utilise un autre addon de fiches que Cinemeta (AIOMetadata, TMDB…), la
+  page peut lire ses listes d'épisodes en premier : choisissez-le parmi les addons trouvés dans votre compte Stremio, ou
+  collez le lien de son manifeste. Utile surtout si des séries ne sont pas décodées.
 - **Mêmes résultats que le script** (testé sur les mêmes bibliothèques), avec en plus une liste **À vérifier** : les
   séries dont Stremio compte plus d'épisodes vus qu'il n'en a gardé (revisionnages, épisodes vus ailleurs, marques
   perdues par Stremio).

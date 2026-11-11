@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https://*.strem.io https://link.stremio.com https://*.nuvio.tv; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src https:; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Stremio → Nuvio</title>
 <style>
@@ -157,15 +157,17 @@ a { color: var(--accent); }
 
 <script>
 /* CORE START — logique sans interface, identique au script Python stremio_to_nuvio.py (testée hors navigateur). */
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const STREMIO_API = "https://api.strem.io/api/";
 const STREMIO_LINK = "https://link.stremio.com/api/v2/";
 const NUVIO_DISCOVERY = "https://api.nuvio.tv/.well-known/nuvio";
 const NUVIO_LINK_PAGE = "https://nuvio.tv/link";
+// [name, meta URL template, id prefixes it serves (null = any)]
 const META_SOURCES = [
-  ["Cinemeta", "https://v3-cinemeta.strem.io/meta/{type}/{id}.json"],
-  ["Nuvio Catalog", "https://catalog.nuvio.tv/meta/{type}/{id}.json"],
+  ["Cinemeta", "https://v3-cinemeta.strem.io/meta/{type}/{id}.json", ["tt"]],
+  ["Nuvio Catalog", "https://catalog.nuvio.tv/meta/{type}/{id}.json", null],
 ];
+const servesId = (source, cid) => !source[2] || source[2].some((p) => cid.startsWith(p));
 const PROGRESS_MIN = 0.02, PROGRESS_MAX = 0.92;
 const BATCH = { library: 200, watched: 500, progress: 100 };
 const PUSH = {
@@ -232,10 +234,63 @@ async function stremioExport(authKey) {
   try {
     const [items, err] = await stremioCall("datastoreGet", { authKey, collection: "libraryItem", ids: [], all: true });
     if (err != null && items == null) throw new HttpError("Stremio", "datastoreGet", typeof err === "string" ? err : JSON.stringify(err));
-    return items || [];
+    // Facultatif : les addons du compte, pour proposer son addon de métadonnées (utilisé seulement si on le choisit).
+    let addons = [];
+    try {
+      const [res] = await stremioCall("addonCollectionGet", { type: "AddonCollectionGet", authKey, update: true });
+      addons = metaAddonsOf((res && (res.addons || res)) || []);
+    } catch { addons = []; }
+    return { items: items || [], addons };
   } finally {
     await stremioCall("logout", { authKey }).catch(() => {}); // ferme seulement la session ouverte ici
   }
+}
+
+/* ---------- addon de métadonnées de l'utilisateur (option) ---------- */
+const BUILTIN_HOSTS = ["v3-cinemeta.strem.io", "cinemeta-live.strem.io", "catalog.nuvio.tv"];
+/** What an add-on manifest says about series metadata: id prefixes (null = any), or false if it has none. */
+function seriesMetaPrefixes(manifest) {
+  if (!manifest || !Array.isArray(manifest.resources)) return false;
+  for (const r of manifest.resources) {
+    const name = typeof r === "string" ? r : r && r.name;
+    if (name !== "meta") continue;
+    const types = (typeof r === "object" && r.types) || manifest.types || [];
+    if (!types.includes("series")) continue;
+    const prefixes = (typeof r === "object" && r.idPrefixes) || manifest.idPrefixes || null;
+    if (prefixes && !prefixes.some((p) => p === "tt" || p === "tmdb:")) continue;
+    return prefixes && prefixes.length ? prefixes : null;
+  }
+  return false;
+}
+function sourceFromManifest(manifestUrl, manifest) {
+  const u = new URL(manifestUrl);
+  if (u.protocol !== "https:") throw new Error("https");
+  if (BUILTIN_HOSTS.includes(u.host)) throw new Error("builtin");
+  const prefixes = seriesMetaPrefixes(manifest);
+  if (prefixes === false) throw new Error("nometa");
+  const base = (u.origin + u.pathname).replace(/\/manifest\.json$/, "");
+  const name = String(manifest.name || u.host).slice(0, 60);
+  return { source: [name, base + "/meta/{type}/{id}.json", prefixes], name, host: u.host, url: u.origin + u.pathname };
+}
+/** Meta add-ons of a Stremio account, in the order Stremio uses them (Cinemeta and non-https ones left out). */
+function metaAddonsOf(list) {
+  const out = [];
+  for (const a of Array.isArray(list) ? list : []) {
+    try {
+      const d = sourceFromManifest(a.transportUrl, a.manifest);
+      if (servesId(d.source, "tt")) out.push(d); // proposé seulement s'il lit les identifiants IMDb (tt…) de la bibliothèque
+    } catch { /* pas un addon de fiches utilisable */ }
+  }
+  return out;
+}
+/** Manifest typed or pasted by the user: fetched to check it really serves series metadata from a browser. */
+async function sourceFromUrl(text) {
+  let url = String(text || "").trim().replace(/^stremio:\/\//i, "https://");
+  if (!/^https:\/\//i.test(url)) throw new Error("https");
+  if (!/\/manifest\.json(\?.*)?$/.test(url)) url = url.replace(/\/+$/, "") + "/manifest.json";
+  const host = new URL(url).host;
+  const manifest = await http("GET", url.replace(/\?.*$/, ""), { service: host, tries: 2 });
+  return sourceFromManifest(url.replace(/\?.*$/, ""), manifest);
 }
 function exportCounts(items) {
   const st = (i) => i.state || {};
@@ -303,7 +358,8 @@ class MetaCache {
     const tpl = this.sources.find(([n]) => n === source)[1];
     const url = tpl.replace("{type}", ctype).replace("{id}", encodeURIComponent(cid).replace(/%3A/gi, ":"));
     let body;
-    try { body = (await http("GET", url, { service: source, allowErrors: true })) || {}; }
+    const builtin = META_SOURCES.some(([n]) => n === source);
+    try { body = (await http("GET", url, { service: source, allowErrors: true, tries: builtin ? 4 : 2 })) || {}; }
     catch (e) { this.failed.add(cid); return []; } // injoignable : pas mis en cache, « Réessayer » le relira
     this.failed.delete(cid);
     const meta = body._httpError ? {} : (body.meta || {});
@@ -325,8 +381,9 @@ function cmpTuple(a, b) {
   return 0;
 }
 async function* candidateLists(cache, cid) {
-  for (const [source] of cache.sources) {
-    if (source === "Cinemeta" && !cid.startsWith("tt")) continue;
+  for (const src of cache.sources) {
+    const source = src[0];
+    if (!servesId(src, cid)) continue;
     const vids = (await cache.videos(source, "series", cid)) || [];
     if (vids.length) {
       yield [source, "source order", vids];
@@ -361,14 +418,15 @@ async function resolveSeries(cache, cid, decoded) {
   return [null, "anchor:" + anchor];
 }
 
-/** Read the first episode list (Cinemeta) of every watched series, a few at a time, before the in-order build. */
+/** Read the first episode list of every watched series, a few at a time, before the in-order build. */
 async function prefetchLists(items, cache, { concurrency = 6, onProgress = null } = {}) {
-  const ids = [...new Set(items.filter((i) => i.type === "series" && (i.state || {}).watched && (i._id || "").startsWith("tt")).map((i) => i._id))];
+  const first = cache.sources[0];
+  const ids = [...new Set(items.filter((i) => i.type === "series" && (i.state || {}).watched && ((i._id || "").startsWith("tt") || (i._id || "").startsWith("tmdb:")) && servesId(first, i._id)).map((i) => i._id))];
   let next = 0, done = 0;
   const worker = async () => {
     while (next < ids.length) {
       const cid = ids[next++];
-      await cache.videos(cache.sources[0][0], "series", cid);
+      await cache.videos(first[0], "series", cid);
       done++;
       if (onProgress) onProgress(done, ids.length);
     }
@@ -565,7 +623,7 @@ function planPush(payloads, before) {
 (() => {
 const TXT = {
   lede: ["Copiez votre bibliothèque Stremio dans un profil Nuvio : titres enregistrés, films et épisodes vus, reprises de lecture.", "Copy your Stremio library into a Nuvio profile: saved titles, watched movies and episodes, playback positions."],
-  trust1: ["<b>Tout se passe dans votre navigateur.</b> Cette page ne contacte que Stremio, Nuvio et deux listes d’épisodes publiques (Cinemeta, Nuvio Catalog). Elle ne garde rien après fermeture.", "<b>Everything happens in your browser.</b> This page only talks to Stremio, Nuvio and two public episode lists (Cinemeta, Nuvio Catalog). Nothing is kept once you close it."],
+  trust1: ["<b>Tout se passe dans votre navigateur.</b> Cette page ne contacte que Stremio, Nuvio et deux listes d’épisodes publiques (Cinemeta, Nuvio Catalog), plus votre propre addon de fiches si vous le choisissez. Elle ne garde rien après fermeture.", "<b>Everything happens in your browser.</b> This page only talks to Stremio, Nuvio and two public episode lists (Cinemeta, Nuvio Catalog), plus your own metadata add-on if you choose it. Nothing is kept once you close it."],
   trust2: ["<b>Rien n’est supprimé</b>, ni dans Stremio ni dans Nuvio : l’import ajoute seulement ce qui manque. Outil gratuit et non officiel.", "<b>Nothing is deleted</b>, in Stremio or in Nuvio: the import only adds what is missing. Free, unofficial tool."],
   s1_title: ["Lire votre bibliothèque Stremio", "Read your Stremio library"],
   s1_sub: ["Lecture seule : rien n’est modifié dans Stremio.", "Read-only: nothing changes in Stremio."],
@@ -621,6 +679,22 @@ const TXT = {
   prog_t: ["Reprises de lecture ({n})", "Playback positions ({n})"],
   none: ["Aucun.", "None."],
   prep_next: ["Continuer", "Continue"],
+  src_line: ["Listes d’épisodes utilisées : {list}.", "Episode lists used: {list}."],
+  src_item: ["{name} ({n} séries)", "{name} ({n} series)"],
+  opt_t: ["Option : votre addon de fiches", "Option: your metadata add-on"],
+  opt_p: ["Si vous utilisez dans Stremio un autre addon de fiches que Cinemeta (AIOMetadata, TMDB…), la page peut lire ses listes d’épisodes en premier. Utile surtout si des séries ne sont pas décodées : la préparation est alors relancée.", "If Stremio uses another metadata add-on than Cinemeta (AIOMetadata, TMDB…), the page can read its episode lists first. Mostly useful when some series are not decoded: the preparation then runs again."],
+  opt_found: ["Trouvé dans votre Stremio :", "Found in your Stremio:"],
+  opt_use: ["Utiliser « {name} »", "Use “{name}”"],
+  opt_paste: ["Ou collez le lien de son manifeste (…/manifest.json)", "Or paste its manifest link (…/manifest.json)"],
+  opt_paste_btn: ["Utiliser cet addon", "Use this add-on"],
+  opt_private: ["Ce lien contient souvent vos clés personnelles : il reste dans ce navigateur, ne le partagez pas.", "This link often holds your personal keys: it stays in this browser, do not share it."],
+  opt_active: ["Lu en premier : « {name} » ({host}).", "Read first: “{name}” ({host})."],
+  opt_off: ["Revenir à Cinemeta et Nuvio Catalog", "Back to Cinemeta and Nuvio Catalog"],
+  opt_checking: ["Vérification de l’addon…", "Checking the add-on…"],
+  opt_err_https: ["Le lien doit commencer par https://.", "The link must start with https://."],
+  opt_err_builtin: ["Cette liste est déjà utilisée par la page.", "The page already uses this list."],
+  opt_err_nometa: ["Cet addon ne fournit pas de fiches de séries.", "This add-on does not provide series metadata."],
+  opt_err_net: ["Cet addon ne répond pas depuis un navigateur. Vérifiez le lien.", "This add-on does not answer a browser. Check the link."],
 
   nv_link_btn: ["Se connecter sans mot de passe", "Sign in without a password"],
   nv_link_hint: ["Vous approuvez cette page depuis nuvio.tv, comme pour relier Lumio.", "You approve this page from nuvio.tv, like when linking Lumio."],
@@ -681,6 +755,7 @@ const S = {
   nuvio: null,
   s3: { mode: "link", phase: "idle", link: null, error: null, profiles: null, chosen: null, counting: false, plan: null, before: null },
   s4: { phase: "idle", progress: {}, after: null, error: null },
+  addon: { detected: [], active: null, error: null, checking: false },
 };
 let flowId = 0; // annule les attentes en cours quand on recommence
 
@@ -783,7 +858,44 @@ function renderS2() {
     ${listBlock("unres_t", r.unresolved.length, "unres_p", r.unresolved.map((u) => `<li>${esc(u.name || u.cid)} : ${whyText(u.why)}</li>`))}
     ${listBlock("skip_t", r.skipped.length, "skip_p", r.skipped.map((s) => `<li>${esc(s.name || s.cid)}</li>`))}
     ${listBlock("prog_t", r.progressNames.length, null, r.progressNames.map((p) => `<li>${esc(p.name)} (${esc(p.video_id)}), ${p.pct} %</li>`))}
+    <p class="hint">${t("src_line", { list: sourceCounts(r) })}</p>
+    ${addonPanel()}
     <div class="row"><button class="btn primary" type="button" data-act="s2next">${t("prep_next")}</button></div>`;
+}
+function sourceCounts(r) {
+  const counts = new Map();
+  for (const d of r.decoded) counts.set(d.source, (counts.get(d.source) || 0) + 1);
+  const order = (S.metaCache ? S.metaCache.sources : META_SOURCES).map((x) => x[0]);
+  return order.filter((n) => counts.get(n)).map((n) => t("src_item", { name: n, n: counts.get(n) })).join(", ") || t("none");
+}
+function addonPanel() {
+  const a = S.addon;
+  let h = `<p>${t("opt_p")}</p>`;
+  if (a.active) {
+    h += `<div class="note ok"><p>${t("opt_active", { name: a.active.name, host: a.active.host })}</p><p><button class="linkish" type="button" data-act="addonOff">${t("opt_off")}</button></p></div>`;
+  } else {
+    if (a.detected.length) h += `<p>${t("opt_found")}</p><div class="row">${a.detected.map((d, i) => `<button class="btn secondary" type="button" data-act="addonUse" data-v="${i}">${t("opt_use", { name: d.name })}</button>`).join("")}</div>`;
+    h += `<form class="creds" id="addonform"><label class="f">${t("opt_paste")}<input type="url" name="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://…/manifest.json" required></label>
+      <p class="hint">${t("opt_private")}</p><div class="row"><button class="btn secondary" type="submit">${t("opt_paste_btn")}</button></div></form>`;
+  }
+  if (a.checking) h += `<div class="wait"><span class="spinner"></span>${t("opt_checking")}</div>`;
+  if (a.error) h += `<div class="note bad"><p>${esc(a.error)}</p></div>`;
+  return `<details class="more"${a.active || a.error || a.checking ? " open" : ""}><summary>${t("opt_t")}</summary>${h}</details>`;
+}
+function addonErr(e) {
+  const m = e && e.message;
+  if (m === "https") return t("opt_err_https");
+  if (m === "builtin") return t("opt_err_builtin");
+  if (m === "nometa") return t("opt_err_nometa");
+  return t("opt_err_net");
+}
+async function addonActivate(getSource) {
+  S.addon.error = null; S.addon.checking = true; renderS2();
+  try {
+    S.addon.active = await getSource();
+    S.addon.checking = false;
+    s2Run();
+  } catch (e) { S.addon.checking = false; S.addon.error = addonErr(e); renderS2(); }
 }
 
 function planTable(before, plan) {
@@ -885,9 +997,9 @@ async function s1Password(form) {
 async function s1Read(key, my) {
   S.s1.phase = "reading"; S.s1.link = null; render();
   try {
-    const items = await stremioExport(key);
+    const { items, addons } = await stremioExport(key);
     if (my !== flowId) return;
-    S.items = items; S.s1.counts = exportCounts(items); S.s1.phase = "done";
+    S.items = items; S.addon.detected = addons; S.s1.counts = exportCounts(items); S.s1.phase = "done";
     if (S.s1.counts.visible === 0 && S.s1.counts.watched === 0) { render(); return; }
     S.step = 2; render(); live(t("st_done", S.s1.counts));
     s2Run();
@@ -897,11 +1009,16 @@ async function s1Read(key, my) {
 async function s2Run() {
   const my = flowId;
   S.s2 = { phase: "running", k: 0, n: S.items.filter((i) => i.type === "series" && (i.state || {}).watched).length, result: null, error: null };
-  S.metaCache = S.metaCache || new MetaCache();
+  const sources = S.addon.active ? [S.addon.active.source, ...META_SOURCES] : META_SOURCES;
+  if (!S.metaCache || S.metaCache.sources !== sources && JSON.stringify(S.metaCache.sources) !== JSON.stringify(sources)) {
+    const old = S.metaCache;
+    S.metaCache = new MetaCache(sources);
+    if (old) for (const [k, v] of old.map) S.metaCache.map.set(k, v); // les listes déjà lues restent valables (clé = source + id)
+  }
   render();
   const step = (k, n) => { if (my !== flowId) return; S.s2.k = k; S.s2.n = n; renderS2(); };
   try {
-    await prefetchLists(S.items, S.metaCache, { onProgress: step });
+    await prefetchLists(S.items, S.metaCache, { concurrency: S.addon.active ? 3 : 6, onProgress: step });
     if (my !== flowId) return;
     const result = await buildPayloads(S.items, { cache: S.metaCache, onProgress: step });
     if (my !== flowId) return;
@@ -982,6 +1099,7 @@ async function restartAll() {
   flowId++;
   if (S.nuvio) await S.nuvio.signOut();
   S.step = 1; S.items = null; S.nuvio = null; S.metaCache = null;
+  S.addon = { detected: [], active: null, error: null, checking: false };
   S.s1 = { mode: "link", phase: "idle", link: null, error: null, counts: null };
   S.s2 = { phase: "idle", k: 0, n: 0, result: null, error: null };
   S.s3 = { mode: "link", phase: "idle", link: null, error: null, profiles: null, chosen: null, counting: false, plan: null, before: null };
@@ -1001,6 +1119,8 @@ document.addEventListener("click", (ev) => {
   else if (act === "s1cancel") { flowId++; S.s1.phase = "idle"; S.s1.link = null; render(); }
   else if (act === "restart" || act === "again") restartAll();
   else if (act === "s2retry") s2Run();
+  else if (act === "addonUse") { const d = S.addon.detected[Number(el.dataset.v)]; if (d) addonActivate(() => sourceFromUrl(d.url)); }
+  else if (act === "addonOff") { S.addon.active = null; S.addon.error = null; s2Run(); }
   else if (act === "s2next") { S.step = 3; render(); }
   else if (act === "s3link") s3Link();
   else if (act === "s3pw") { S.s3.mode = "password"; S.s3.error = null; render(); const f = $("#s3form input[name=email]"); if (f) f.focus(); }
@@ -1016,6 +1136,7 @@ document.addEventListener("submit", (ev) => {
   ev.preventDefault();
   if (ev.target.id === "s1form") s1Password(ev.target);
   else if (ev.target.id === "s3form") s3Password(ev.target);
+  else if (ev.target.id === "addonform") { const v = ev.target.url.value; addonActivate(() => sourceFromUrl(v)); }
 });
 // Page fermée en cours de route : on ferme la session Nuvio de cette page (jamais les autres appareils).
 window.addEventListener("pagehide", () => { if (S.nuvio && S.nuvio.token) S.nuvio.signOut({ keepalive: true }); });
